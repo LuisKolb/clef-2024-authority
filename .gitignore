@@ -159,5 +159,9 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# ignore remote repo, only here for easy access
+# remote CheckThat! Lab repo, only here for easy data access
 clef2024-checkthat-lab
+
+# temp dirs to test out pyserini
+clef/indexes
+clef/temp-data
