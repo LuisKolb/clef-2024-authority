@@ -163,5 +163,8 @@ cython_debug/
 clef2024-checkthat-lab
 
 # temp dirs to test out pyserini
-clef/indexes
-clef/temp-data
+clef/indexes/*
+!clef/indexes/.gitkeep
+
+clef/temp-data/*
+!clef/temp-data/.gitkeep
