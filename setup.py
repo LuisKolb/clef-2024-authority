@@ -12,6 +12,9 @@ setup(
         "jupyter",
         "torch",
         "faiss-cpu",
+        "scikit-learn",
+        "python-terrier",
+        "ir-measures",
     ],
-    packages=find_packages(["exampleproject", "exampleproject.*"]),
+    packages=find_packages(["clef", "clef2024-checkthat-lab/task5/*"]),
 )
