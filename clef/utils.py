@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 def write_trec_format_output(filename: str, data: List[Tuple[str, int, int, float]], tag: str) -> None:
     """
@@ -17,6 +17,17 @@ def write_trec_format_output(filename: str, data: List[Tuple[str, int, int, floa
         for rumor_id, authority_tweet_id, rank, score in data:
             line = f"{rumor_id}\tQ0\t{authority_tweet_id}\t{rank}\t{score}\t{tag}\n"
             file.write(line)
+
+
+
+def write_jsonlines_from_dicts(filename: str, dicts: List[Dict]) -> None:
+    import json
+
+    with open(filename, 'w') as file:
+        for item in dicts:
+            print(type(item))
+            
+            file.write(f'{json.dumps(item)}\n')
 
 import textwrap
 
