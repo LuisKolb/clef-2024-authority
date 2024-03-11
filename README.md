@@ -9,7 +9,13 @@ conda create -n clef python=3.8
 conda activate clef
 ```
 
-then
+then install torch with CUDA (will probably differ on your machine; setup.py does not allow a custom index_url, so this has to be done manually):
+
+```
+pip3 install torch --index-url https://download.pytorch.org/whl/cu118
+```
+
+and then install the rest of the packages:
 
 ```
 pip install -e .

@@ -10,11 +10,11 @@ setup(
     install_requires=[
         "pyserini",
         "jupyter",
-        "torch",
         "faiss-cpu",
         "scikit-learn",
         "python-terrier",
         "ir-measures",
+        "jsonlines"
     ],
     packages=find_packages(["clef", "clef2024-checkthat-lab/task5/*"]),
 )
