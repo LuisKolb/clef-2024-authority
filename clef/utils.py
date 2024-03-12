@@ -14,9 +14,10 @@ def write_trec_format_output(filename: str, data: List[Tuple[str, int, int, floa
     - tag (str): The string identifier of the team/model.
     """
     with open(filename, 'w') as file:
-        for rumor_id, authority_tweet_id, rank, score in data:
-            line = f"{rumor_id}\tQ0\t{authority_tweet_id}\t{rank}\t{score}\t{tag}\n"
-            file.write(line)
+        for rumor_id in data.keys():
+            for author_account, authority_tweet_id, doc_text, rank, score in data[rumor_id]:
+                line = f"{rumor_id}\tQ0\t{authority_tweet_id}\t{rank}\t{score}\t{tag}\n"
+                file.write(line)
 
 
 
@@ -25,8 +26,6 @@ def write_jsonlines_from_dicts(filename: str, dicts: List[Dict]) -> None:
 
     with open(filename, 'w') as file:
         for item in dicts:
-            print(type(item))
-            
             file.write(f'{json.dumps(item)}\n')
 
 import textwrap
