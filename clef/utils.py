@@ -1,6 +1,33 @@
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, TypedDict, Union, Optional, NamedTuple
+import textwrap
+import json 
+import os
 
-def write_trec_format_output(filename: str, data: List[Tuple[str, int, int, float]], tag: str) -> None:
+class RumorDict(TypedDict):
+    id: str
+    rumor: str
+    label: str
+    timeline: List[List[str]]
+    evidence: List[List[str]]
+    retrieved_evidence: List[List[Union[str, int, float]]]
+
+class RankedDocs(NamedTuple):
+    author_account: str
+    authority_tweet_id:str
+    doc_text: str
+    rank: int
+    score: float
+
+
+def load_rumors_from_jsonl(filepath: Union[str, os.PathLike]) -> List[RumorDict]:
+    jsons = []
+    with open(filepath, encoding='utf8') as file:
+        for line in file:
+            jsons += [json.loads(line)]
+    return jsons
+
+
+def write_trec_format_output(filename: str, data: Dict[str, List[List[str]]], tag: str) -> None:
     """
     Writes data to a file in the TREC format.
 
@@ -20,15 +47,15 @@ def write_trec_format_output(filename: str, data: List[Tuple[str, int, int, floa
                 file.write(line)
 
 
-
-def write_jsonlines_from_dicts(filename: str, dicts: List[Dict]) -> None:
-    import json
-
+def write_jsonlines_from_dicts(filename: Union[str, os.PathLike], dicts: List[Dict]) -> None:
     with open(filename, 'w') as file:
         for item in dicts:
             file.write(f'{json.dumps(item)}\n')
 
-import textwrap
+
+
+
+
 
 def wrap(text: str):
     """
@@ -37,5 +64,7 @@ def wrap(text: str):
     Parameters:
     - text (str): The text you want to print.
     """
+
     wrapped_text = textwrap.fill(text, width=80) #text is the object which you want to print
     print(wrapped_text)
+
