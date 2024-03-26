@@ -92,6 +92,7 @@ def f1_macro_strict(actual, predicted, actual_evidence, predicted_evidence):
 
 
 def eval_run(pred_file, gold_file, out_file):
+    
 
     gold_dict_labels = {}
     gold_dict_evidence = {}
@@ -134,3 +135,17 @@ def eval_run(pred_file, gold_file, out_file):
         writer_object = writer(f_object, delimiter="\t")
         writer_object.writerow(result_list)
         f_object.close()
+
+import pyterrier as pt
+import pyterrier.io as ptio
+import pyterrier.pipelines as ptpipelines
+from ir_measures import R, MAP    
+
+if not pt.started():
+    pt.init()
+
+def eval_run_retrieval(pred_path,golden_path):
+    golden = ptio.read_qrels(golden_path)
+    pred= ptio._read_results_trec(pred_path)
+    eval= ptpipelines.Evaluate(pred, golden , metrics = [R@5,MAP],perquery=False)
+    return eval
