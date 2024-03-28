@@ -169,4 +169,7 @@ clef/indexes/*
 clef/temp-data/*
 !clef/temp-data/.gitkeep
 
+clef/data-out/*
+!clef/data-out/.gitkeep
+
 clef/temp-data-dir
