@@ -173,7 +173,5 @@ clef/data-out/*
 !clef/data-out/.gitkeep
 
 !clef/data-out/eval
-clef/data-out/eval/*
-!clef/data-out/eval/.gitkeep
 
 clef/temp-data-dir
