@@ -15,7 +15,7 @@ system_message = 'You are a helpful assistant. You need to decide if a premise e
 
 def get_completion(input_message):
     completion = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4-turbo-preview",
         messages=[
             {"role": "system", "content": system_message},
             {"role": "user", "content": input_message}

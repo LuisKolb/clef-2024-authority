@@ -1,0 +1,53 @@
+import os
+import numpy as np
+from openai import OpenAI
+
+from clef.utils.embedding import cosine_similarity
+
+client = OpenAI(
+    api_key=os.environ.get("OPENAI_API_KEY"), # This is the default and can be omitted
+)
+
+def get_embedding(text):
+    response = client.embeddings.create(
+        input = text,
+        model = 'text-embedding-3-small'
+    )
+    return response.data[0].embedding
+
+def get_embedding_multiple(texts):
+    response = client.embeddings.create(
+        input = texts,
+        model = 'text-embedding-3-small'
+    )
+
+    return [r.embedding for r in response.data]
+
+def retrieve_relevant_documents_openai(rumor_id, query, timeline, k=5):
+    # print(rumor_id, query)
+
+    # Generate embedding for the rumor
+    rumor_embedding = get_embedding(query)
+
+    # Generate embeddings for each tweet in the timeline
+    timeline_embeddings = get_embedding_multiple([tweet[2] for tweet in timeline])
+
+    # Compute similarities
+    similarities = [cosine_similarity(rumor_embedding, tweet_embedding) for tweet_embedding in timeline_embeddings]
+
+    # Select the most relevant tweets based on similarities
+    # Here, we choose a simple approach to select the top N most similar tweets. You can adjust N as needed.
+    # [-k:][::-1] --> this is: top-k, then reverse the list  so highest-scoring entry is index 0, then second-highest on index 1 etc.
+    most_relevant_tweet_indices = np.argsort(similarities)[-k:][::-1] 
+
+    scores = [similarities[i] for i in most_relevant_tweet_indices]
+    relevant_tweets = [timeline[i] for i in most_relevant_tweet_indices]
+
+    ranked = []
+    for i, (cos_sim, [acc, id, text]) in enumerate(zip(scores, relevant_tweets)):
+        ranked += [[rumor_id, id, i+1, cos_sim]]
+    
+        # print('\t',[rumor_id, id, i+1, cos_sim, text])
+
+    return ranked
+        

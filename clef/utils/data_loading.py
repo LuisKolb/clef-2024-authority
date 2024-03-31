@@ -17,6 +17,11 @@ class RankedDocs(NamedTuple):
     rank: int
     score: float
 
+"""
+config
+"""
+clef_base_path = '../clef2024-checkthat-lab/task5'
+
 
 def load_rumors_from_jsonl(filepath: Union[str, os.PathLike]) -> List[RumorDict]:
     jsons = []
@@ -39,13 +44,19 @@ def write_trec_format_output(filename: str, data: List[List[Union[str, int, floa
         - score (float): The score given by the model for the authority tweet ID.
     - tag (str): The string identifier of the team/model.
     """
-    with open(filename, 'w') as file:
-        for rumor_id, authority_tweet_id, rank, score in data:
-            line = f"{rumor_id}\tQ0\t{authority_tweet_id}\t{rank}\t{score}\t{tag}\n"
-            file.write(line)
+    i = 0
+    if data:
+        with open(filename, 'w') as file:
+            for rumor_id, authority_tweet_id, rank, score in data:
+                line = f"{rumor_id}\tQ0\t{authority_tweet_id}\t{rank}\t{score}\t{tag}\n"
+                file.write(line)
+                i += 1
+        print(f'wrote {i} lines to {filename}')
+    else:
+        print('data was empty, nothing was written to disk')
 
 
-def combine_rumors_with_trec_file_judgements(jsons, trec_judgements_path):
+def combine_rumors_with_trec_file_judgements(jsons, trec_judgements_path, sep='\t'):
     """
     create a list of RankedDocs objects in key retrieved_evidence from TREC-formatted file
 
@@ -60,7 +71,7 @@ def combine_rumors_with_trec_file_judgements(jsons, trec_judgements_path):
 
     with open(trec_judgements_path, 'r') as file:
         for line in file:
-            rumor_id, _, evidence_id, rank, score, _ = line.split('\t')
+            rumor_id, _, evidence_id, rank, score, _ = line.split(sep)
             if rumor_id not in trec_by_id:
                 trec_by_id[rumor_id] = {}
             trec_by_id[rumor_id][evidence_id] = (rank, score)
@@ -118,10 +129,13 @@ def clean_jsons(jsons):
         }]
     return data_cleaned
 
-clef_base_path = '../clef2024-checkthat-lab/task5'
 
-def load_datasets(preprocess: bool, clef_path: str = clef_base_path):
-    
+def fetch_author_info(account_url: str):
+    print('[ERROR] Twitter API is too goddamn expensive 😠')
+    return ''
+
+
+def load_datasets(preprocess: bool, clef_path: str = clef_base_path, add_author_info: bool = False):
     data_path = os.path.join(clef_path, 'data')
 
     filepath_train = os.path.join(data_path, 'English_train.json')
