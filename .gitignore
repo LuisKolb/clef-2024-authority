@@ -162,13 +162,11 @@ cython_debug/
 # remote CheckThat! Lab repo, only here for easy data access
 clef2024-checkthat-lab
 
-clef/temp
+# don't track json files with author info
+clef/data/*.json
 
-clef/data-out/*
-!clef/data-out/.gitkeep
+# don't track output files
+**/data-out/*
 
-!clef/data-out/eval
-
-clef/data/*
-!clef/data/.gitkeep
-!clef/data/README.md
+# pyserini dynamic index
+**/temp/*

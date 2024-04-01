@@ -19,11 +19,6 @@ class RankedDocs(NamedTuple):
     rank: int
     score: float
 
-"""
-config
-"""
-clef_base_path = '../clef2024-checkthat-lab/task5'
-
 
 def load_rumors_from_jsonl(filepath: Union[str, os.PathLike]) -> List[RumorDict]:
     jsons = []
@@ -132,9 +127,12 @@ def clean_jsons(jsons):
 
     return data_cleaned
 
+task5_dir = 'clef2024-checkthat-lab/task5' # relative to repo root
+author_info_file = 'clef/data/author-data-translated.json' # relative to repo root
 
-def load_datasets(preprocess: bool, clef_path: str = clef_base_path, add_author_info: bool = False):
-    data_path = os.path.join(clef_path, 'data')
+def load_datasets(preprocess: bool, root_path: str, add_author_name: bool = False, add_author_bio: bool = False):
+    
+    data_path = os.path.join(root_path, task5_dir, 'data')
 
     filepath_train = os.path.join(data_path, 'English_train.json')
     filepath_dev = os.path.join(data_path, 'English_dev.json')
@@ -148,8 +146,9 @@ def load_datasets(preprocess: bool, clef_path: str = clef_base_path, add_author_
         train_jsons = clean_jsons(train_jsons)
         dev_jsons =  clean_jsons(dev_jsons)
     
-    if add_author_info:
-        with open('data/author-data-translated.json', 'r') as file:
+    if add_author_name or add_author_bio:
+        author_info_path = os.path.join(root_path, author_info_file)
+        with open(author_info_path, 'r') as file:
             author_info = json.load(file)
         for item in dev_jsons:
             timeline = item['timeline']
@@ -161,8 +160,13 @@ def load_datasets(preprocess: bool, clef_path: str = clef_base_path, add_author_
                 if preprocess:
                     name = clean_text_basic(name)
                     bio = clean_text_basic(bio)
+                
+                new_tweet_text = f'Text: {tweet_text}'
+                if add_author_bio:
+                    new_tweet_text = f'Account Description: {bio}\n' + new_tweet_text
+                if add_author_name:
+                    new_tweet_text = f'Account: {name}\n' + new_tweet_text
 
-                new_tweet_text = f'Account: {name}\nDescription: {bio}\nText: {tweet_text}'
                 new_timeline += [[account, tweet_id, new_tweet_text]]
             item['timeline'] = new_timeline
             
