@@ -169,5 +169,24 @@ def load_datasets(preprocess: bool, root_path: str, add_author_name: bool = Fals
 
                 new_timeline += [[account, tweet_id, new_tweet_text]]
             item['timeline'] = new_timeline
+
+            evidence = item['evidence']
+            new_evidence = []
+            for account, tweet_id, tweet_text in evidence:
+                name = author_info[account.strip()]["translated_name"]
+                bio = author_info[account.strip()]["translated_bio"]
+
+                if preprocess:
+                    name = clean_text_basic(name)
+                    bio = clean_text_basic(bio)
+                
+                new_tweet_text = f'Text: {tweet_text}'
+                if add_author_bio:
+                    new_tweet_text = f'Account Description: {bio}\n' + new_tweet_text
+                if add_author_name:
+                    new_tweet_text = f'Account: {name}\n' + new_tweet_text
+
+                new_evidence += [[account, tweet_id, new_tweet_text]]
+            item['evidence'] = new_evidence
             
     return (train_jsons, dev_jsons)

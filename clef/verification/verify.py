@@ -3,7 +3,7 @@ from tqdm.auto import tqdm
 from clef.utils.data_loading import RankedDocs
 import re
 
-def factcheck_using_evidence(claim: str, evidence: List[RankedDocs], inference_method: Callable, debug: bool = True):
+def factcheck_using_evidence(claim: str, evidence: List[RankedDocs], inference_method: Callable, debug: bool = False):
     predicted_evidence = []
     confidences = []
 
@@ -59,7 +59,7 @@ from clef.utils.preprocessing import clean_tweet_aggressive
 from tqdm.auto import tqdm
 
 
-def check_dataset_with_model(dataset: List, model: str, preprocess: bool = False) -> List:
+def check_dataset_with_model(dataset: List, model: str, debug: bool = False) -> List:
     res_jsons = []
 
     if model == 'bart':
@@ -80,11 +80,12 @@ def check_dataset_with_model(dataset: List, model: str, preprocess: bool = False
         retrieved_evidence = item["retrieved_evidence"]
 
         if retrieved_evidence: # only run fact check if we actually have retrieved evidence
-            pred_label, pred_evidence = factcheck_using_evidence(rumor, retrieved_evidence, inference_method)
+            pred_label, pred_evidence = factcheck_using_evidence(rumor, retrieved_evidence, inference_method, debug)
 
-            tqdm.write(f'label: {item["label"]}')
-            tqdm.write(f'predicted: {pred_label}')
-            tqdm.write('')
+            if debug:
+                tqdm.write(f'label: {item["label"]}')
+                tqdm.write(f'predicted: {pred_label}')
+                tqdm.write('')
             
             res_jsons += [
                 {
