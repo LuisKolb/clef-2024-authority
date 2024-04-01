@@ -1,7 +1,7 @@
 from typing import Callable, List
 from tqdm.auto import tqdm
 from clef.utils.data_loading import RankedDocs
-
+import re
 
 def factcheck_using_evidence(claim: str, evidence: List[RankedDocs], inference_method: Callable, debug: bool = True):
     predicted_evidence = []
@@ -36,7 +36,9 @@ def factcheck_using_evidence(claim: str, evidence: List[RankedDocs], inference_m
 
         if label != "NOT ENOUGH INFO":
             confidences += [confidence]
-        if debug: tqdm.write(f'\t{confidence} {evidence_text}')
+        if debug: 
+            formatted_text = re.sub(r"\s+", " ", evidence_text)
+            tqdm.write(f'\t{confidence} {formatted_text}')
 
     if confidences:
         meanconf = sum(confidences) / len(confidences) # mean confidence, no weighting
@@ -62,7 +64,6 @@ def check_dataset_with_model(dataset: List, model: str, preprocess: bool = False
 
     if model == 'bart':
         from clef.verification.models.bart import inference_bart
-
         inference_method = inference_bart
     elif model == 'roberta':
         from clef.verification.models.roberta import inference_roberta
@@ -71,24 +72,15 @@ def check_dataset_with_model(dataset: List, model: str, preprocess: bool = False
         from clef.verification.models.openai import inference_openai
         inference_method = inference_openai
     else:
-        print('[ERROR] invalid models string')
+        print('[ERROR] invalid model string, available options: ["bart"|"roberta"|"openai"]')
         return []
 
     for item in tqdm(dataset):
         rumor = item["rumor"]
         retrieved_evidence = item["retrieved_evidence"]
 
-        evidence = []
-        for link, id, text, rank, score in retrieved_evidence:
-            if preprocess:
-                text = clean_tweet_aggressive(text)
-            evidence += [[link, id, text, rank, score]]
-        
-        if preprocess:
-            rumor = clean_tweet_aggressive(rumor)
-
         if retrieved_evidence: # only run fact check if we actually have retrieved evidence
-            pred_label, pred_evidence = factcheck_using_evidence(rumor, evidence, inference_method)
+            pred_label, pred_evidence = factcheck_using_evidence(rumor, retrieved_evidence, inference_method)
 
             tqdm.write(f'label: {item["label"]}')
             tqdm.write(f'predicted: {pred_label}')

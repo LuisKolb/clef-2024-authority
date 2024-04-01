@@ -2,6 +2,8 @@ from typing import List, Tuple, Dict, TypedDict, Union, Optional, NamedTuple
 import json
 import os
 
+from clef.utils.preprocessing import clean_text_basic
+
 class RumorDict(TypedDict):
     id: str
     rumor: str
@@ -102,7 +104,7 @@ def write_jsonlines_from_dicts(filename: Union[str, os.PathLike], dicts: List[Di
 
 
 def clean_jsons(jsons):
-    from .preprocessing import clean_tweet
+    from clef.utils.preprocessing import clean_text_basic
 
     data_cleaned = []
 
@@ -110,29 +112,25 @@ def clean_jsons(jsons):
         
         tl_clean = []
         for account_url, tl_tweet_id, tl_tweet in entry['timeline']:
-            tl_tweet_cleaned = clean_tweet(tl_tweet)
+            tl_tweet_cleaned = clean_text_basic(tl_tweet)
             if tl_tweet_cleaned:
                 tl_clean += [[account_url, tl_tweet_id, tl_tweet_cleaned]]
 
         ev_clean = []
         for account_url, ev_tweet_id, ev_tweet in entry['evidence']:
-            ev_tweet_cleaned = clean_tweet(ev_tweet)
+            ev_tweet_cleaned = clean_text_basic(ev_tweet)
             if ev_tweet_cleaned:
                 ev_clean += [[account_url, ev_tweet_id, ev_tweet_cleaned]]
 
         data_cleaned += [{
             'id': entry['id'],
-            'rumor': clean_tweet(entry['rumor']),
+            'rumor': clean_text_basic(entry['rumor']),
             'label': entry['label'],
             'timeline': tl_clean,
             'evidence': ev_clean,
         }]
+
     return data_cleaned
-
-
-def fetch_author_info(account_url: str):
-    print('[ERROR] Twitter API is too goddamn expensive 😠')
-    return ''
 
 
 def load_datasets(preprocess: bool, clef_path: str = clef_base_path, add_author_info: bool = False):
@@ -147,6 +145,25 @@ def load_datasets(preprocess: bool, clef_path: str = clef_base_path, add_author_
     print(f'loaded {len(train_jsons)} training json lines and {len(dev_jsons)} dev json lines.')
 
     if preprocess:
-        return (clean_jsons(train_jsons), clean_jsons(dev_jsons))
-    else:
-        return (train_jsons, dev_jsons)
+        train_jsons = clean_jsons(train_jsons)
+        dev_jsons =  clean_jsons(dev_jsons)
+    
+    if add_author_info:
+        with open('data/author-data-translated.json', 'r') as file:
+            author_info = json.load(file)
+        for item in dev_jsons:
+            timeline = item['timeline']
+            new_timeline = []
+            for account, tweet_id, tweet_text in timeline:
+                name = author_info[account.strip()]["translated_name"]
+                bio = author_info[account.strip()]["translated_bio"]
+
+                if preprocess:
+                    name = clean_text_basic(name)
+                    bio = clean_text_basic(bio)
+
+                new_tweet_text = f'Account: {name}\nDescription: {bio}\nText: {tweet_text}'
+                new_timeline += [[account, tweet_id, new_tweet_text]]
+            item['timeline'] = new_timeline
+            
+    return (train_jsons, dev_jsons)

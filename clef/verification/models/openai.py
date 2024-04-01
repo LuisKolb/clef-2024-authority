@@ -11,7 +11,7 @@ client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY"), # This is the default and can be omitted
 )
 
-system_message = 'You are a helpful assistant. You need to decide if a premise either supports the statement ("SUPPORTS"), refutes the statement ("REFUTES") or if the premise is not related to the statement ("NOT ENOUGH INFO"). No yapping.'
+system_message = 'You are a helpful assistant. You need to decide if a statement by a given source either supports the given claim ("SUPPORTS"), refutes the claim ("REFUTES") or if the premise is not related to the claim ("NOT ENOUGH INFO"). No yapping.'
 
 def get_completion(input_message):
     completion = client.chat.completions.create(
@@ -25,7 +25,7 @@ def get_completion(input_message):
     return completion.choices[0].message
     
 def inference_openai(statement: str, evidence: str) -> VerificationResult:
-    input_text = f'The premise: "{evidence}"\nThe statement: "{statement}"'
+    input_text = f'The statement: "{evidence}"\nThe claim: "{statement}"'
 
     result = get_completion(input_text).content
 

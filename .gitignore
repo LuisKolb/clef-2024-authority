@@ -168,3 +168,7 @@ clef/data-out/*
 !clef/data-out/.gitkeep
 
 !clef/data-out/eval
+
+clef/data/*
+!clef/data/.gitkeep
+!clef/data/README.md
