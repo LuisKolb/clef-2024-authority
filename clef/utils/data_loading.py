@@ -1,6 +1,7 @@
 from typing import List, Tuple, Dict, TypedDict, Union, Optional, NamedTuple
 import json
 import os
+import re
 
 from clef.utils.preprocessing import clean_text_basic
 
@@ -68,6 +69,11 @@ def combine_rumors_with_trec_file_judgements(jsons, trec_judgements_path, sep='\
 
     with open(trec_judgements_path, 'r') as file:
         for line in file:
+            # handle edge case where dataset may contain field which contain an additional whitespace, ...
+            # which was then saved together with the field value as a string looking like 'id 0 "id " 1'
+            # (only seems to affect TERRIER trec files)
+            line = re.sub('"', '', line)
+            line = re.sub('  ', ' ', line)
             rumor_id, _, evidence_id, rank, score, _ = line.split(sep)
             if rumor_id not in trec_by_id:
                 trec_by_id[rumor_id] = {}
@@ -127,8 +133,55 @@ def clean_jsons(jsons):
 
     return data_cleaned
 
+
+def add_author_info(dataset, preprocess, add_author_bio, add_author_name, author_info_file):
+    with open(author_info_file, 'r') as file:
+        author_info = json.load(file)
+    for item in dataset:
+        timeline = item['timeline']
+        new_timeline = []
+        for account, tweet_id, tweet_text in timeline:
+            name = author_info[account.strip()]["translated_name"]
+            bio = author_info[account.strip()]["translated_bio"]
+
+            if preprocess:
+                name = clean_text_basic(name)
+                bio = clean_text_basic(bio)
+            
+            new_tweet_text = f'Text: {tweet_text}'
+            if add_author_bio:
+                new_tweet_text = f'Account Description: {bio}\n' + new_tweet_text
+            if add_author_name:
+                new_tweet_text = f'Account: {name}\n' + new_tweet_text
+
+            new_timeline += [[account, tweet_id, new_tweet_text]]
+        item['timeline'] = new_timeline
+
+        evidence = item['evidence']
+        new_evidence = []
+        for account, tweet_id, tweet_text in evidence:
+            name = author_info[account.strip()]["translated_name"]
+            bio = author_info[account.strip()]["translated_bio"]
+
+            if preprocess:
+                name = clean_text_basic(name)
+                bio = clean_text_basic(bio)
+            
+            new_tweet_text = f'Text: {tweet_text}'
+            if add_author_bio:
+                new_tweet_text = f'Account Description: {bio}\n' + new_tweet_text
+            if add_author_name:
+                new_tweet_text = f'Account: {name}\n' + new_tweet_text
+
+            new_evidence += [[account, tweet_id, new_tweet_text]]
+        item['evidence'] = new_evidence
+    
+    return dataset
+
+
 task5_dir = 'clef2024-checkthat-lab/task5' # relative to repo root
-author_info_file = 'clef/data/author-data-translated.json' # relative to repo root
+author_info_file_train = 'clef/data/train-author-data-translated.json' # relative to repo root
+author_info_file_dev = 'clef/data/author-data-translated.json' # relative to repo root
 
 def load_datasets(preprocess: bool, root_path: str, add_author_name: bool = False, add_author_bio: bool = False):
     
@@ -147,46 +200,8 @@ def load_datasets(preprocess: bool, root_path: str, add_author_name: bool = Fals
         dev_jsons =  clean_jsons(dev_jsons)
     
     if add_author_name or add_author_bio:
-        author_info_path = os.path.join(root_path, author_info_file)
-        with open(author_info_path, 'r') as file:
-            author_info = json.load(file)
-        for item in dev_jsons:
-            timeline = item['timeline']
-            new_timeline = []
-            for account, tweet_id, tweet_text in timeline:
-                name = author_info[account.strip()]["translated_name"]
-                bio = author_info[account.strip()]["translated_bio"]
-
-                if preprocess:
-                    name = clean_text_basic(name)
-                    bio = clean_text_basic(bio)
-                
-                new_tweet_text = f'Text: {tweet_text}'
-                if add_author_bio:
-                    new_tweet_text = f'Account Description: {bio}\n' + new_tweet_text
-                if add_author_name:
-                    new_tweet_text = f'Account: {name}\n' + new_tweet_text
-
-                new_timeline += [[account, tweet_id, new_tweet_text]]
-            item['timeline'] = new_timeline
-
-            evidence = item['evidence']
-            new_evidence = []
-            for account, tweet_id, tweet_text in evidence:
-                name = author_info[account.strip()]["translated_name"]
-                bio = author_info[account.strip()]["translated_bio"]
-
-                if preprocess:
-                    name = clean_text_basic(name)
-                    bio = clean_text_basic(bio)
-                
-                new_tweet_text = f'Text: {tweet_text}'
-                if add_author_bio:
-                    new_tweet_text = f'Account Description: {bio}\n' + new_tweet_text
-                if add_author_name:
-                    new_tweet_text = f'Account: {name}\n' + new_tweet_text
-
-                new_evidence += [[account, tweet_id, new_tweet_text]]
-            item['evidence'] = new_evidence
+        train_jsons = add_author_info(train_jsons, preprocess, add_author_bio, add_author_name, os.path.join(root_path, author_info_file_train))
+        dev_jsons = add_author_info(dev_jsons, preprocess, add_author_bio, add_author_name, os.path.join(root_path, author_info_file_dev))
+            
             
     return (train_jsons, dev_jsons)

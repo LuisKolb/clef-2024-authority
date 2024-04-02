@@ -134,7 +134,11 @@ def eval_run(pred_file, gold_file, out_file):
         writer_object.writerow(result_list)
         f_object.close()
 
+
 def eval_run_custom(pred_file, gold_file, out_file):
+    """
+    basically the same, but without saving to file
+    """
     gold_dict_labels = {}
     gold_dict_evidence = {}
     for line in jsonlines.open(gold_file):

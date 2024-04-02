@@ -165,6 +165,9 @@ clef2024-checkthat-lab
 # don't track json files with author info
 clef/data/*.json
 
+# don't track train qrels file
+clef/data/train_qrels.txt
+
 # don't track output files
 **/data-out/*
 
