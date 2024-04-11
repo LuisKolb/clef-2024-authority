@@ -19,7 +19,7 @@ def factcheck_using_evidence(claim: str, evidence: List[RankedDocs], inference_m
         #   -1 means evidence strongly refutes
         #   +1 means evidence strongly supports
 
-        confidence = confidence * score # scale by retrieval score
+        # confidence = confidence * score # scale by retrieval score
 
         if label == "REFUTES":
             # confidence is always positive, for REFUTES make confidence negative
