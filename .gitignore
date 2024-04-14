@@ -162,6 +162,10 @@ cython_debug/
 # remote CheckThat! Lab repo, only here for easy data access
 clef2024-checkthat-lab
 
+# watclaimcheck
+WatClaimCheck
+WatClaimCheck/*
+
 # don't track json files with author info
 clef/data/*.json
 clef/data/*.csv
