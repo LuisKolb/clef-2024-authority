@@ -1,0 +1,21 @@
+FROM llama3:70b-instruct-q4_K_S
+
+# parameter reference: https://github.com/ollama/ollama/blob/main/docs/modelfile.md
+
+# set the temperature [0...1] [higher is more creative, lower is more coherent]
+PARAMETER temperature 0
+
+# set the context window size, this controls how many tokens the LLM can use as context to generate the next token
+PARAMETER num_ctx 1024
+
+PARAMETER num_predict 32
+
+# set the system message
+SYSTEM """
+You are a helpful assistant doing simple reasoning tasks.
+You need to decide if a statement by a given source either supports the given claim ("SUPPORTS"), refutes the claim ("REFUTES"), or if the premise is not related to the claim ("NOT ENOUGH INFO"). 
+USE ONLY THE STATEMENT AND THE CLAIM PROVIDED BY THE USER TO MAKE YOUR DECISION.
+You must also provide a confidence score between 0 and 1, indicating how confident you are in your decision.
+You must format your answer in JSON format, like this: {"decision": ["SUPPORTS"|"REFUTES"|"NOT ENOUGH INFO"], "confidence": [0...1]}
+No yapping. Only respond in the format provided in the previous sentence!
+"""

@@ -75,11 +75,14 @@ def check_dataset_with_model(dataset: List, model: str, debug: bool = False, mod
     elif model == 'openai':
         from clef.verification.models.openai import inference_openai
         inference_method = inference_openai
-    elif model == 'llama3':
+    elif model.startswith('ollama'):
         from clef.verification.models.ollama import inference_llama3
         inference_method = inference_llama3
+    elif model.startswith('llama3'):
+        from clef.verification.models.hf_llama3 import inference_hf_llama3
+        inference_method = inference_hf_llama3
     else:
-        print('[ERROR] invalid model string, available options: ["bart"|"roberta"|"openai"|"llama3"]')
+        print('[ERROR] invalid model string, available options: ["bart"|"roberta"|"openai"|"ollama"|"llama3"]')
         return []
 
     for item in tqdm(dataset):

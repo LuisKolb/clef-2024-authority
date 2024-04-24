@@ -1,14 +1,15 @@
 import json
 import ollama
 
-system_message = """
-You are a helpful assistant doing simple reasoning tasks.
-You need to decide if a statement by a given source either supports the given claim ("SUPPORTS"), refutes the claim ("REFUTES"), or if the premise is not related to the claim ("NOT ENOUGH INFO"). 
-USE ONLY THE PROVIDED STATEMENT TO MAKE YOUR DECISION.
-You must also provide a confidence score between 0 and 1, indicating how confident you are in your decision.
-Format your answer in JSON format, like this: {"decision": ["SUPPORTS"|"REFUTES"|"NOT ENOUGH INFO"], "confidence": [0...1]}
-No yapping. Only respond in the format provided in the previous sentence!
-""" 
+# sysmessage is included in modelfile
+# system_message = """
+# You are a helpful assistant doing simple reasoning tasks.
+# You need to decide if a statement by a given source either supports the given claim ("SUPPORTS"), refutes the claim ("REFUTES"), or if the premise is not related to the claim ("NOT ENOUGH INFO"). 
+# USE ONLY THE PROVIDED STATEMENT TO MAKE YOUR DECISION.
+# You must also provide a confidence score between 0 and 1, indicating how confident you are in your decision.
+# Format your answer in JSON format, like this: {"decision": ["SUPPORTS"|"REFUTES"|"NOT ENOUGH INFO"], "confidence": [0...1]}
+# No yapping. Only respond in the format provided in the previous sentence!
+# """ 
 
 def get_completion(input_message, model_string) -> ollama.ChatResponse:
     response = ollama.chat(
@@ -20,10 +21,6 @@ def get_completion(input_message, model_string) -> ollama.ChatResponse:
             'temperature': 0,
         },
         messages=[
-            {
-                'role': 'system',
-                'content': system_message,
-            },
             {
                 'role': 'user',
                 'content': input_message,
