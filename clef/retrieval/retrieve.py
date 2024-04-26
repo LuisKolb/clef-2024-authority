@@ -3,7 +3,7 @@ from tqdm.auto import tqdm
 
 from clef.utils.preprocessing import clean_tweet_aggressive
 
-def retrieve_evidence(dataset: List, method: str, kwargs: Dict = {}):
+def retrieve_evidence_old(dataset: List, method: str, kwargs: Dict = {}):
     method = method.upper()
     
     if method == 'LUCENE':
@@ -30,5 +30,39 @@ def retrieve_evidence(dataset: List, method: str, kwargs: Dict = {}):
         timeline = item['timeline']
 
         data += search(rumor_id, claim, timeline, **kwargs)
+
+    return data
+
+from typing import Dict, List
+from abc import ABC, abstractmethod
+from clef.utils.data_loading import AuredDataset
+
+import logging
+logger_retrieval = logging.getLogger('clef.retrv')
+
+# Base class for retrieval
+class EvidenceRetriever(ABC):
+    def __init__(self, k):
+        self.k = k
+        
+    @abstractmethod
+    def retrieve(self, rumor_id: str, claim: str, timeline: List, **kwargs) -> List:
+        """Retrieve documents based on the input parameters."""
+        pass
+
+
+# Specific retriever subclasses
+def retrieve_evidence(dataset: AuredDataset, retriever: EvidenceRetriever, kwargs: Dict = {}):
+    data = []
+
+    for i, item in enumerate(dataset):
+        rumor_id = item["id"]
+        claim = item["rumor"]
+        timeline = item["timeline"]
+        logger_retrieval.info(f"({i}/{len(dataset)}) Retrieving data for rumor_id {rumor_id} using {retriever.__class__}")
+
+        retrieved_data = retriever.retrieve(rumor_id, claim, timeline, **kwargs)
+        data.extend(retrieved_data)
+        logger_retrieval.debug(f"Retrieved data: {retrieved_data}")
 
     return data

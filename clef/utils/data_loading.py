@@ -1,25 +1,138 @@
-from typing import List, Tuple, Dict, TypedDict, Union, Optional, NamedTuple
+from typing import Generator, List, Tuple, Dict, TypedDict, Union, Optional, NamedTuple
 import json
 import os
 import re
+import logging
 
 from clef.utils.preprocessing import clean_text_basic
 
-class RumorDict(TypedDict):
-    id: str
-    rumor: str
-    label: str
-    timeline: List[List[str]]
-    evidence: List[List[str]]
-    retrieved_evidence: List[List[Union[str, int, float]]]
+class AuthorityPost(NamedTuple):
+    url: str
+    post_id: str
+    text: str
+    rank: Optional[int]
+    score: Optional[int]
 
-class RankedDocs(NamedTuple):
-    author_account: str
-    authority_tweet_id:str
-    doc_text: str
+class AuthorityPostRanked(NamedTuple):
+    url: str
+    post_id: str
+    text: str
     rank: int
     score: float
 
+class RumorWithEvidence(TypedDict):
+    id: str
+    rumor: str
+    label: str
+    timeline: List[AuthorityPost]
+    evidence: List[AuthorityPost]
+    retrieved_evidence: Optional[List[List[Union[str, int, float]]]] # not required
+
+class RumorDict(TypedDict):
+    id: str
+    item: RumorWithEvidence
+
+
+class AuredDataset(object):
+    rumors_grouped: RumorDict = {} # type: ignore[assignment]
+    rumors: List[RumorWithEvidence] = []
+    preprocess: bool 
+    add_author_name: bool 
+    add_author_bio: bool 
+
+    def __init__(self, filepath, preprocess, add_author_name, add_author_bio, **kwargs) -> None:
+        self.filepath: Union[str, os.PathLike] = filepath
+        # self.preprocess: bool = preprocess
+        # self.add_author_name: bool  = add_author_name
+        # self.add_author_bio: bool  = add_author_bio
+        """
+        init ds like this (for example):
+
+        config = {
+            'preprocess': True,
+            'add_author_name': False,
+            'add_author_bio': False,
+            ...
+        }
+        ds = AuredDataset(filepath, **config)
+        """
+        self.preprocess = preprocess
+        self.add_author_name = add_author_name
+        self.add_author_bio = add_author_bio
+
+        self.load_rumor_data()
+
+    def __str__(self) -> str:
+        return json.dumps(self.rumors, indent=2)
+    
+    def __iter__(self) -> Generator[RumorWithEvidence,None,None]:
+        for rumor_item in self.rumors:
+            yield rumor_item
+    
+    def __getitem__(self, idx):
+        return self.rumors[idx]
+
+    def __setitem__(self, idx, val):
+        self.rumors[idx] = val
+    
+    def __len__(self) -> int:
+        return len(self.rumors)
+    
+    def load_rumor_data(self):
+        jsons = self.load_rumors_from_jsonl()
+
+        for item in jsons:
+            entry = RumorWithEvidence(item)
+            entry['timeline'] = [AuthorityPost(*post, None, None) for post in entry['timeline']] # type: ignore
+            entry['evidence'] = [AuthorityPost(*post, None, None) for post in entry['evidence']] # type: ignore
+            entry['retrieved_evidence'] = None
+            self.rumors.append(entry)
+
+        logging.info(f'loaded {len(jsons)} json entries from {self.filepath}')
+
+        for item in self.rumors:
+            item['timeline'] = self.format_posts(item['timeline'])
+            item['evidence'] = self.format_posts(item['evidence'])
+            if self.preprocess:
+                item['rumor'] = clean_text_basic(item['rumor'])
+            self.rumors_grouped[item['id']] = item # add to grouped dict
+
+    def load_rumors_from_jsonl(self) -> List[RumorWithEvidence]:
+        jsons = []
+        with open(self.filepath, encoding='utf8') as file:
+            for line in file:
+                jsons += [json.loads(line)]
+        return jsons
+    
+    def format_posts(self, post_list: List[AuthorityPost], author_info_filepath: str = '../../clef/data/author-data-translated.json'):
+        new_post_list = []
+        author_info = {}
+        if self.add_author_bio or self.add_author_name:
+            with open(author_info_filepath, 'r') as file:
+                author_info = json.load(file)
+
+        for post in post_list:
+            new_post_text = f'AuthorityStatement: {post.text}'
+
+            if author_info:
+                account = post.url.strip()
+                name = author_info[account]["translated_name"]
+                bio = author_info[account]["translated_bio"]
+                
+                if self.add_author_bio:
+                    new_post_text = f'AuthorityDescription: {bio}\n' + new_post_text
+                if self.add_author_name:
+                    new_post_text = f'AuthorityName: {name}\n' + new_post_text
+
+            if self.preprocess:
+                new_post_text = clean_text_basic(new_post_text)
+            
+            new_post_list.append(AuthorityPost(post.url, post.post_id, new_post_text, None, None))
+        return new_post_list
+
+#
+# OLD STUFF
+#
 
 def load_rumors_from_jsonl(filepath: Union[str, os.PathLike]) -> List[RumorDict]:
     jsons = []
@@ -46,6 +159,7 @@ def write_trec_format_output(filename: str, data: List[List[Union[str, int, floa
     if data:
         with open(filename, 'w') as file:
             for rumor_id, authority_tweet_id, rank, score in data:
+                # use "\t" as separator, pyterrier uses " " as separator by default!!
                 line = f"{rumor_id}\tQ0\t{authority_tweet_id}\t{rank}\t{score}\t{tag}\n"
                 file.write(line)
                 i += 1
