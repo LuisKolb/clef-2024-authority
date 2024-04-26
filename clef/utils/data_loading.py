@@ -2,23 +2,18 @@ from typing import Generator, List, Tuple, Dict, TypedDict, Union, Optional, Nam
 import json
 import os
 import re
-import logging
-
 from clef.utils.preprocessing import clean_text_basic
+
+import logging
+logger_loading = logging.getLogger('clef.loader')
 
 class AuthorityPost(NamedTuple):
     url: str
     post_id: str
     text: str
     rank: Optional[int]
-    score: Optional[int]
+    score: Optional[float]
 
-class AuthorityPostRanked(NamedTuple):
-    url: str
-    post_id: str
-    text: str
-    rank: int
-    score: float
 
 class RumorWithEvidence(TypedDict):
     id: str
@@ -26,15 +21,10 @@ class RumorWithEvidence(TypedDict):
     label: str
     timeline: List[AuthorityPost]
     evidence: List[AuthorityPost]
-    retrieved_evidence: Optional[List[List[Union[str, int, float]]]] # not required
-
-class RumorDict(TypedDict):
-    id: str
-    item: RumorWithEvidence
+    retrieved_evidence: Optional[List[AuthorityPost]] # not required
 
 
 class AuredDataset(object):
-    rumors_grouped: RumorDict = {} # type: ignore[assignment]
     rumors: List[RumorWithEvidence] = []
     preprocess: bool 
     add_author_name: bool 
@@ -88,18 +78,26 @@ class AuredDataset(object):
             entry['retrieved_evidence'] = None
             self.rumors.append(entry)
 
-        logging.info(f'loaded {len(jsons)} json entries from {self.filepath}')
+        logger_loading.info(f'loaded {len(jsons)} json entries from {self.filepath}')
 
         for item in self.rumors:
             item['timeline'] = self.format_posts(item['timeline'])
             item['evidence'] = self.format_posts(item['evidence'])
             if self.preprocess:
                 item['rumor'] = clean_text_basic(item['rumor'])
-            self.rumors_grouped[item['id']] = item # add to grouped dict
+    
+    def get_grouped_rumors(self):
+        """
+        returns a dict with mapping {rumor_id: RumorWithEvidence}
+        """
+        grouped = {} 
+        for item in self.rumors:
+            grouped[item['id']] = item # add to grouped dict 
+        return grouped
 
     def load_rumors_from_jsonl(self) -> List[RumorWithEvidence]:
         jsons = []
-        with open(self.filepath, encoding='utf8') as file:
+        with open(self.filepath, encoding='utf-8') as file:
             for line in file:
                 jsons += [json.loads(line)]
         return jsons
@@ -129,12 +127,84 @@ class AuredDataset(object):
             
             new_post_list.append(AuthorityPost(post.url, post.post_id, new_post_text, None, None))
         return new_post_list
+    
+    def add_trec_file_judgements(self, trec_judgements_path, sep=' ', normalize_scores=True):
+        """
+        create a list of RankedDocs objects in key retrieved_evidence from TREC-formatted file
+
+        Parameters:
+            - trec_judgements_path: filepath to TREC-formatted file containing rank and score
+            - sep: separator used in TREC file
+
+        Returns:
+        list of json-like rumors from dataset, with the key retrieved_evidence populated with a list of RankedDocs-like objects
+        """
+        trec_by_id = {}
+        max_score = 0
+        min_score = 0
+        num_rows = 0
+
+        with open(trec_judgements_path, 'r') as file:
+            for line in file:
+                # handle edge case where dataset may contain field which contain an additional whitespace, ...
+                # which was then saved together with the field value as a string looking like 'id 0 "id " 1'
+                # (only seems to affect TERRIER trec files)
+                line = re.sub('"', '', line)
+                line = re.sub('  ', ' ', line)
+                rumor_id, _, evidence_id, rank, score, tag = line.split(sep)
+                score = float(score)
+                if rumor_id not in trec_by_id:
+                    trec_by_id[rumor_id] = {}
+                
+                # keep max,min score values to normalize later
+                # scores should always be positive, but still do this...
+                if score < min_score:
+                    min_score = score
+                if score > max_score:
+                    max_score = score
+
+                # add entry to dict for lookup later 
+                trec_by_id[rumor_id][evidence_id] = (rank, score)
+                num_rows += 1
+        
+        if (max_score-min_score) == 0:
+            logger_loading.error(f'encountered (max_score-min_score) == 0; max={max_score}; min={min_score}')
+            raise ValueError()
+
+        for i, item in enumerate(self.rumors):
+            timeline: List[AuthorityPost] = item['timeline']
+            
+            item['retrieved_evidence'] = []
+
+            doc_ranks = trec_by_id[item['id']]
+
+            for post in timeline:
+                if post.post_id in doc_ranks:
+                    rank, score = doc_ranks[post.post_id]
+                    
+                    # normalize score to [0...1] using max,min scores from earlier
+                    if not normalize_scores: 
+                        score_norm = score
+                    else: 
+                        score_norm = (score-min_score) / (max_score-min_score)
+                    
+                    item['retrieved_evidence'].append(AuthorityPost(
+                        post.url, 
+                        post.post_id, 
+                        post.text,
+                        int(rank),
+                        float(score_norm),
+                    )) 
+            
+            self.rumors[i] = item
+        
+        logger_loading.info(f'added {num_rows} scores from {trec_judgements_path} to the evidence entries')
 
 #
 # OLD STUFF
 #
 
-def load_rumors_from_jsonl(filepath: Union[str, os.PathLike]) -> List[RumorDict]:
+def load_rumors_from_jsonl(filepath: Union[str, os.PathLike]) -> List[RumorWithEvidence]:
     jsons = []
     with open(filepath, encoding='utf8') as file:
         for line in file:
@@ -142,7 +212,7 @@ def load_rumors_from_jsonl(filepath: Union[str, os.PathLike]) -> List[RumorDict]
     return jsons
 
 
-def write_trec_format_output(filename: str, data: List[List[Union[str, int, float]]], tag: str) -> None:
+def write_trec_format_output(filename: str, data: List[List[Union[str, int, float]]], tag: str = "NO_TAG_SPECIFIED") -> None:
     """
     Writes data to a file in the TREC format.
 
@@ -159,8 +229,8 @@ def write_trec_format_output(filename: str, data: List[List[Union[str, int, floa
     if data:
         with open(filename, 'w') as file:
             for rumor_id, authority_tweet_id, rank, score in data:
-                # use "\t" as separator, pyterrier uses " " as separator by default!!
-                line = f"{rumor_id}\tQ0\t{authority_tweet_id}\t{rank}\t{score}\t{tag}\n"
+                # use " " as separator, pyterrier uses " " as separator by default!! (stupid, please just use "\t")
+                line = f"{rumor_id} Q0 {authority_tweet_id} {rank} {score} {tag}\n"
                 file.write(line)
                 i += 1
         print(f'wrote {i} lines to {filename}')

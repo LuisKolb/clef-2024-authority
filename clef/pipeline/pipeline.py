@@ -1,4 +1,13 @@
+#
+# imports
+#
 
+import os
+from clef.utils.data_loading import AuredDataset, write_jsonlines_from_dicts
+from clef.utils.data_loading import write_trec_format_output
+from clef.utils.scoring import eval_run_custom
+from clef.verification.models.openai import OpenaiVerifier
+from clef.verification.verify import Judge, run_verifier_on_dataset
 
 import logging
 logger_pipe = logging.getLogger('clef.pipe')
@@ -7,11 +16,13 @@ logger_pipe = logging.getLogger('clef.pipe')
 #
 # define parameters
 #
-from clef.utils.data_loading import AuredDataset, task5_dir
-from clef.utils.data_loading import write_trec_format_output
-import os
 
-def run_pipe(filepath, config, golden_labels_file):
+
+#
+# functions
+#
+
+def run_pipe(filepath, golden_labels_file, config):
 
 
     # ensure out_dir directories exist for saving output (required for anserini, etc - not only for eval)
@@ -25,6 +36,7 @@ def run_pipe(filepath, config, golden_labels_file):
     """
 
     ds = AuredDataset(filepath, **config)
+    # ds.rumors = ds.rumors[0:2] # subset here, idk...
 
     """
     step 1 output format:
@@ -68,22 +80,25 @@ def run_pipe(filepath, config, golden_labels_file):
         retriever = TFIDFRetriever(config['retriever_k'])
 
     else:
-        logger_pipe.error(f"retriever {config['retriever_label']} not valid!")
+        logger_pipe.error(f"retriever type {config['retriever_label']} not valid!")
         quit()
 
     from clef.retrieval.retrieve import retrieve_evidence
     data = retrieve_evidence(ds, retriever)
 
-    trecfile = f'{config["out_dir"]}/{config["retriever_label"]}-dev.trec.txt'
-    write_trec_format_output(trecfile, data, config['retriever_label'])
+    trec_filepath = f'{config["out_dir"]}/{config["retriever_label"]}-dev.trec.txt'
+    write_trec_format_output(trec_filepath, data, config['retriever_label'])
 
     from clef.utils.scoring import eval_run_retrieval
-    r5, meanap = [v for v in eval_run_retrieval(trecfile, golden_labels_file).values()]
+    r5, meanap = [v for v in eval_run_retrieval(trec_filepath, golden_labels_file).values()]
 
     logger_pipe.info(f'result for retrieval run - R@5: {r5:.4f} MAP: {meanap:.4f} with config {config}')
     with open(os.path.join(config['out_dir'], 'eval', 'log.txt'), 'a') as fh:
         fh.write(f'result for retrieval run - R@5: {r5:.4f} MAP: {meanap:.4f} with config {config}\n')
+    return r5, meanap
 
+
+def ver(filepath, config):
     """
     step 2 output format:
 
@@ -108,4 +123,28 @@ def run_pipe(filepath, config, golden_labels_file):
     We use the Macro-F1 to evaluate the classification of the rumors. 
     Additionally, we will consider a Strict Macro-F1 where the rumor label is considered correct only if at least one retrieved authority evidence is correct.
     """
-    return
+    
+    trec_filepath = f'{config["out_dir"]}/{config["retriever_label"]}-dev.trec.txt'
+    
+    ds = AuredDataset(filepath, **config)
+
+    ds.add_trec_file_judgements(trec_filepath, sep=' ',
+                                normalize_scores=config['normalize_scores'])
+
+    verifier = OpenaiVerifier()
+
+    solomon = Judge(scale=config['scale'], 
+                    ignore_nei=config['ignore_nei'])
+    
+    verification_results = run_verifier_on_dataset(ds, verifier, solomon)
+
+    verification_outfile = f'{config["out_dir"]}/zeroshot-ver-rq3-openai.jsonl'
+    write_jsonlines_from_dicts(verification_outfile, verification_results)
+
+    macro_f1, sctrict_macro_f1 = eval_run_custom(verification_outfile, filepath, '')
+
+    logger_pipe.info(f'result for verification run - Strict-F1: {macro_f1:.4f} Strict-Macro-F1: {sctrict_macro_f1:.4f} with config {config} and TREC FILE {trec_filepath}')
+    with open(os.path.join(config['out_dir'], 'eval', 'log.txt'), 'a') as fh:
+        fh.write(f'result for verification run - Strict-F1: {macro_f1:.4f} Strict-Macro-F1: {sctrict_macro_f1:.4f} with config {config} and TREC FILE {trec_filepath}\n')
+
+    return verification_results
