@@ -8,13 +8,16 @@ setup(
     author_email="kolb.luis@gmail.com",
     url="https://luiskolb.at",
     install_requires=[
-        "pyserini",
+        # "pyserini",
         "jupyter",
-        "faiss-cpu",
+        # "faiss-cpu",
         "scikit-learn",
         "python-terrier",
         "ir-measures",
-        "jsonlines"
+        "jsonlines",
+        "openai",
+        "plotly",
+        "matplotlib"
     ],
-    packages=find_packages(["clef", "clef2024-checkthat-lab/task5/*"]),
+    packages=find_packages(".", ["clef/*"]),
 )

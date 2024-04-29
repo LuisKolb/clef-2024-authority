@@ -102,6 +102,7 @@ No yapping.
         self.client = OpenAI(
             api_key=(api_key or os.environ.get("OPENAI_API_KEY")),
         )
+        self.assistant_id="asst_XRITdOybDfYpIr4fVevm6qYi"
     
     def get_completion(self, input_message) -> ChatCompletion:
         completion = self.client.chat.completions.create(
@@ -115,22 +116,42 @@ No yapping.
 
         return completion
     
-    def verify(self, claim: str, evidence: str) -> VerificationResult:
-        input_text = f'Statement: "{evidence}"\nClaim: "{claim}"'
-      
-        result = self.get_completion(input_text)
+    def get_assistant_response(self, input_message):
+        thread = client.beta.threads.create()
+        message = client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=input_message
+        )
 
-        try:
-            answer = result.choices[0].message.content
-        except:
-            logger_verification.warn(f'could not unpack response string from openai model: {result}')
-            return VerificationResult("NOT ENOUGH INFO", 1.0)
+        run = client.beta.threads.runs.create_and_poll(
+            thread_id=thread.id,
+            assistant_id=self.assistant_id,
+        )
+
+        if run.status == 'completed':
+            messages = client.beta.threads.messages.list(
+                thread_id=thread.id
+            )
+            if messages:
+                for message in messages.data:
+                    if message.role == "assistant":
+                        return message.content[0].text.value # type: ignore
+        else:
+            logger_verification.warn(f'could not unpack response from openai model: {run}')
+            return '{"decision": "NOT ENOUGH INFO", confidence": 1.0}'
+
+    
+    def verify(self, claim: str, evidence: str) -> VerificationResult:
+        input_text = f'"{evidence}"\nClaim: "{claim}"'
+      
+        answer = self.get_assistant_response(input_text)
 
         try:
             if answer:
                 decision, confidence = json.loads(answer).values()
             else:
-                logger_verification.warn(f'answer was empty, parsed from result: {result}')
+                logger_verification.warn(f'answer was empty, response to input_text text: "{evidence}"\nClaim: "{claim}"')
         except ValueError:
             logger_verification.warn(f'ERROR: could not json-parse response from openai model: {answer}')
             return VerificationResult("NOT ENOUGH INFO", 1.0)

@@ -2,7 +2,7 @@ import re
 from typing import Callable, List, NamedTuple, Tuple
 from tqdm.auto import tqdm
 from clef.utils.data_loading import AuredDataset, AuthorityPost
-from clef.verification.models.openai import BaseVerifier
+from clef.verification.models.open_ai import BaseVerifier
 
 import logging
 logger_verification = logging.getLogger('clef.retr')
@@ -97,7 +97,6 @@ class Judge(object):
 
 def judge_using_evidence(rumor_id, claim: str, evidence: List[AuthorityPost], verifier: BaseVerifier, judge: Judge):
     evidences_with_decisions = []
-    
 
     for post in evidence:
         if not post.text:
@@ -127,7 +126,7 @@ def run_verifier_on_dataset(dataset: AuredDataset, verifier: BaseVerifier, judge
         
         pred_label, pred_evidence = judge_using_evidence(rumor_id, claim, retrieved_evidence, verifier, judge)
 
-        print(f'({i}/{len(dataset)}) Verifying {rumor_id}: {claim}')
+        print(f'({i+1}/{len(dataset)}) Verifying {rumor_id}: {claim}')
 
         for url, post_id, text, confidence in pred_evidence:
             formatted_text = re.sub(r"\s+", " ", text) # replace linebreaks, etc. for pretty printing in a single line
@@ -219,7 +218,7 @@ def check_dataset_with_model(dataset: List, model: str, debug: bool = False, mod
         from clef.verification.models.roberta import inference_roberta
         inference_method = inference_roberta
     elif model == 'openai':
-        from clef.verification.models.openai import inference_openai
+        from clef.verification.models.open_ai import inference_openai
         inference_method = inference_openai
     elif model.startswith('ollama'):
         from clef.verification.models.ollama import inference_llama3

@@ -25,16 +25,10 @@ class RumorWithEvidence(TypedDict):
 
 
 class AuredDataset(object):
-    rumors: List[RumorWithEvidence] = []
-    preprocess: bool 
-    add_author_name: bool 
-    add_author_bio: bool 
-
     def __init__(self, filepath, preprocess, add_author_name, add_author_bio, **kwargs) -> None:
         self.filepath: Union[str, os.PathLike] = filepath
-        # self.preprocess: bool = preprocess
-        # self.add_author_name: bool  = add_author_name
-        # self.add_author_bio: bool  = add_author_bio
+        self.rumors: List[RumorWithEvidence] = []
+
         """
         init ds like this (for example):
 
@@ -46,11 +40,12 @@ class AuredDataset(object):
         }
         ds = AuredDataset(filepath, **config)
         """
-        self.preprocess = preprocess
-        self.add_author_name = add_author_name
-        self.add_author_bio = add_author_bio
+        self.preprocess: bool = preprocess
+        self.add_author_name: bool = add_author_name
+        self.add_author_bio: bool = add_author_bio
 
         self.load_rumor_data()
+
 
     def __str__(self) -> str:
         return json.dumps(self.rumors, indent=2)
@@ -110,7 +105,7 @@ class AuredDataset(object):
                 author_info = json.load(file)
 
         for post in post_list:
-            new_post_text = f'AuthorityStatement: {post.text}'
+            new_post_text = f'AuthorityStatement: "{post.text}"'
 
             if author_info:
                 account = post.url.strip()

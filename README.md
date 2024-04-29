@@ -28,3 +28,11 @@ at the repo root (here) execute
 ```
 git clone https://gitlab.com/checkthat_lab/clef2024-checkthat-lab.git
 ```
+
+## Misc
+
+note to self: had to turn off this check in pyterrier.batchretrieve _retrieve_one():
+```
+ln. 360        # if num_expected is not None:
+ln. 361            # assert(num_expected == len(result))
+```

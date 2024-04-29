@@ -59,7 +59,7 @@ def retrieve_evidence(dataset: AuredDataset, retriever: EvidenceRetriever, kwarg
         rumor_id = item["id"]
         claim = item["rumor"]
         timeline = item["timeline"]
-        logger_retrieval.info(f"({i}/{len(dataset)}) Retrieving data for rumor_id {rumor_id} using {retriever.__class__}")
+        logger_retrieval.info(f"({i+1}/{len(dataset)}) Retrieving data for rumor_id {rumor_id} using {retriever.__class__}")
 
         retrieved_data = retriever.retrieve(rumor_id, claim, timeline, **kwargs)
         data.extend(retrieved_data)
