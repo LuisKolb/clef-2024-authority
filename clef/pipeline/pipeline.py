@@ -3,32 +3,19 @@
 #
 
 import os
+import json
 from typing import Optional
+
 from clef.utils.data_loading import AuredDataset, write_jsonlines_from_dicts
 from clef.utils.data_loading import write_trec_format_output
 from clef.utils.scoring import eval_run_custom
 from clef.verification.models.open_ai import OpenaiVerifier
 from clef.verification.verify import Judge, run_verifier_on_dataset
 
-
 import logging
-# logging to file
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                    datefmt='%m-%d %H:%M',
-                    filename='./pipeline.log',
-                    filemode='w')
+logger = logging.getLogger(__name__)
 
-# logging to console
-console = logging.StreamHandler() # define a Handler which writes INFO messages or higher to the sys.stderr
-console.setLevel(logging.INFO)
-formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s') # set a format which is simpler for console use
-console.setFormatter(formatter) # tell the handler to use this format
-logging.getLogger().addHandler(console) # add the handler to the root logger
-
-logger_pipe = logging.getLogger('clef.pipe')
-
-def step_retrieval(ds: AuredDataset, config, golden_labels_file=None):
+def step_retrieval(ds: AuredDataset, config, golden_labels_file):
     # ensure out_dir directories exist for saving output (required for anserini, etc - not only for eval)
     if not os.path.exists(config['out_dir']):
         os.makedirs(config['out_dir'])
@@ -66,7 +53,7 @@ def step_retrieval(ds: AuredDataset, config, golden_labels_file=None):
         retriever = LuceneRetriever(config['retriever_k'])
 
     elif 'OPENAI' in config['retriever_label'].upper():
-        from clef.retrieval.models.openai import OpenAIRetriever
+        from clef.retrieval.models.open_ai import OpenAIRetriever
         retriever = OpenAIRetriever(config['retriever_k'])
 
     elif 'SBERT' in config['retriever_label'].upper():
@@ -82,7 +69,7 @@ def step_retrieval(ds: AuredDataset, config, golden_labels_file=None):
         retriever = TerrierRetriever(config['retriever_k'])
 
     else:
-        logger_pipe.error(f"retriever type {config['retriever_label']} not valid!")
+        logger.error(f"retriever type {config['retriever_label']} not valid!")
         quit()
 
     from clef.retrieval.retrieve import retrieve_evidence
@@ -91,12 +78,12 @@ def step_retrieval(ds: AuredDataset, config, golden_labels_file=None):
     trec_filepath = f'{config["out_dir"]}/{config["retriever_label"]}-{config["split"]}.trec.txt'
     write_trec_format_output(trec_filepath, data, config['retriever_label'])
 
-    if golden_labels_file:
+    if not config["blind_run"]:
         # gold labels available
         from clef.utils.scoring import eval_run_retrieval
         r5, meanap = [v for v in eval_run_retrieval(trec_filepath, golden_labels_file).values()]
 
-        logger_pipe.info(f'result for retrieval run - R@5: {r5:.4f} MAP: {meanap:.4f} with config {config}')
+        logger.info(f'result for retrieval run - R@5: {r5:.4f} MAP: {meanap:.4f} with config {config}')
         with open(os.path.join(config['out_dir'], 'eval', 'log.txt'), 'a') as fh:
             fh.write(f'result for retrieval run - R@5: {r5:.4f} MAP: {meanap:.4f} with config {config}\n')
         return r5, meanap
@@ -105,7 +92,7 @@ def step_retrieval(ds: AuredDataset, config, golden_labels_file=None):
         return trec_filepath
 
 
-def step_verification(ds: AuredDataset, config,  ground_truth_filepath=None):
+def step_verification(ds: AuredDataset, config,  ground_truth_filepath):
     """
     step 2 output format:
 
@@ -139,17 +126,17 @@ def step_verification(ds: AuredDataset, config,  ground_truth_filepath=None):
     solomon = Judge(scale=config['scale'], 
                     ignore_nei=config['ignore_nei'])
     
-    verification_results = run_verifier_on_dataset(ds, verifier, solomon)
+    verification_results = run_verifier_on_dataset(ds, verifier, solomon, config["blind_run"])
 
-    verification_outfile = f'{config["out_dir"]}/zeroshot-ver-rq3-openai.jsonl'
+    verification_outfile = f'{config["out_dir"]}/zeroshot-ver-openai-retr-{config["retriever_label"]}.jsonl'
     write_jsonlines_from_dicts(verification_outfile, verification_results)
 
     # only run evaluation scoring if not running blind
-    if  ground_truth_filepath:
+    if not config["blind_run"]:
         # gold labels available
         macro_f1, sctrict_macro_f1 = eval_run_custom(verification_outfile, ground_truth_filepath, '')
 
-        logger_pipe.info(f'result for verification run - Strict-F1: {macro_f1:.4f} Strict-Macro-F1: {sctrict_macro_f1:.4f} with config {config} and TREC FILE {trec_filepath}')
+        logger.info(f'result for verification run - Strict-F1: {macro_f1:.4f} Strict-Macro-F1: {sctrict_macro_f1:.4f} with config {config} and TREC FILE {trec_filepath}')
         with open(os.path.join(config['out_dir'], 'eval', 'log.txt'), 'a') as fh:
             fh.write(f'result for verification run - Strict-F1: {macro_f1:.4f} Strict-Macro-F1: {sctrict_macro_f1:.4f} with config {config} and TREC FILE {trec_filepath}\n')
 
@@ -189,6 +176,7 @@ def main(config: Optional[dict]):
     if not config:
         # default config
         config = {
+            'blind': False,
             'split': 'dev',
             'preprocess': True,
             'add_author_name': False,
@@ -201,7 +189,7 @@ def main(config: Optional[dict]):
             'ignore_nei': True,
         }
 
-    logger_pipe.info(f"Running Pipeline with default parameters: {config}")
+    logger.info(f"Running Pipeline with default parameters: {config}")
 
     run_pipeline(data_path, root_path, task5_dir, config)
 

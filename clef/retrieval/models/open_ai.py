@@ -6,9 +6,7 @@ from clef.retrieval.retrieve import EvidenceRetriever
 from clef.utils.embedding import cosine_similarity
 
 import logging
-logger_retrieval = logging.getLogger('clef.retrv')
-
-
+logger = logging.getLogger(__name__)
 
 client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY"), # This is the default and can be omitted
@@ -60,7 +58,7 @@ def get_embedding_multiple(texts):
 class OpenAIRetriever(EvidenceRetriever):
     def __init__(self, k, api_key=None):
         self.client = OpenAI(api_key=api_key or os.environ.get("OPENAI_API_KEY"))
-        logger_retrieval.info("OpenAI client initialized with provided API key.")
+        logger.info(f'OpenAI client initialized with {"API key from .env" if api_key else "provided API key"}')
         super().__init__(k)
 
     def get_embedding(self, text):
@@ -76,7 +74,7 @@ class OpenAIRetriever(EvidenceRetriever):
         return [r.embedding for r in response.data]
 
     def retrieve(self, rumor_id, claim, timeline, **kwargs):
-        logger_retrieval.info(f"Retrieving documents for rumor_id: {rumor_id}")
+        logger.info(f"retrieving documents for rumor_id: {rumor_id}")
 
         # Generate embedding for the claim
         claim_embedding = self.get_embedding(claim)

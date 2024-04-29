@@ -5,7 +5,7 @@ import re
 from clef.utils.preprocessing import clean_text_basic
 
 import logging
-logger_loading = logging.getLogger('clef.loader')
+logger = logging.getLogger(__name__)
 
 class AuthorityPost(NamedTuple):
     url: str
@@ -18,14 +18,14 @@ class AuthorityPost(NamedTuple):
 class RumorWithEvidence(TypedDict):
     id: str
     rumor: str
-    label: str
+    label: Optional[str]
     timeline: List[AuthorityPost]
-    evidence: List[AuthorityPost]
+    evidence: Optional[List[AuthorityPost]] # not required
     retrieved_evidence: Optional[List[AuthorityPost]] # not required
 
 
 class AuredDataset(object):
-    def __init__(self, filepath, preprocess, add_author_name, add_author_bio, **kwargs) -> None:
+    def __init__(self, filepath, preprocess, add_author_name, add_author_bio, blind_run, **kwargs) -> None:
         self.filepath: Union[str, os.PathLike] = filepath
         self.rumors: List[RumorWithEvidence] = []
 
@@ -43,6 +43,7 @@ class AuredDataset(object):
         self.preprocess: bool = preprocess
         self.add_author_name: bool = add_author_name
         self.add_author_bio: bool = add_author_bio
+        self.blind_run: bool = blind_run
 
         self.load_rumor_data()
 
@@ -69,15 +70,17 @@ class AuredDataset(object):
         for item in jsons:
             entry = RumorWithEvidence(item)
             entry['timeline'] = [AuthorityPost(*post, None, None) for post in entry['timeline']] # type: ignore
-            entry['evidence'] = [AuthorityPost(*post, None, None) for post in entry['evidence']] # type: ignore
+            if not self.blind_run:
+                entry['evidence'] = [AuthorityPost(*post, None, None) for post in entry['evidence']] # type: ignore
             entry['retrieved_evidence'] = None
             self.rumors.append(entry)
 
-        logger_loading.info(f'loaded {len(jsons)} json entries from {self.filepath}')
+        logger.info(f'loaded {len(jsons)} json entries from {self.filepath}')
 
         for item in self.rumors:
             item['timeline'] = self.format_posts(item['timeline'])
-            item['evidence'] = self.format_posts(item['evidence'])
+            if not self.blind_run and item['evidence']:
+                item['evidence'] = self.format_posts(item['evidence'])
             if self.preprocess:
                 item['rumor'] = clean_text_basic(item['rumor'])
     
@@ -163,7 +166,7 @@ class AuredDataset(object):
                 num_rows += 1
         
         if (max_score-min_score) == 0:
-            logger_loading.error(f'encountered (max_score-min_score) == 0; max={max_score}; min={min_score}')
+            logger.error(f'encountered (max_score-min_score) == 0; max={max_score}; min={min_score}')
             raise ValueError()
 
         for i, item in enumerate(self.rumors):
@@ -193,7 +196,7 @@ class AuredDataset(object):
             
             self.rumors[i] = item
         
-        logger_loading.info(f'added {num_rows} scores from {trec_judgements_path} to the evidence entries')
+        logger.info(f'added {num_rows} scores from {trec_judgements_path} to the evidence entries')
 
 #
 # OLD STUFF
@@ -228,9 +231,9 @@ def write_trec_format_output(filename: str, data: List[List[Union[str, int, floa
                 line = f"{rumor_id} Q0 {authority_tweet_id} {rank} {score} {tag}\n"
                 file.write(line)
                 i += 1
-        print(f'wrote {i} lines to {filename}')
+        logger.info(f'wrote {i} lines to {filename}')
     else:
-        print('data was empty, nothing was written to disk')
+        logger.warn('data was empty, nothing was written to disk')
 
 
 def combine_rumors_with_trec_file_judgements(jsons, trec_judgements_path, sep='\t'):

@@ -12,7 +12,7 @@ from pyterrier.pipelines import Evaluate
 from ir_measures import R,P,MAP
 
 import logging
-logger_retrieval = logging.getLogger('clef.retrv')
+logger = logging.getLogger(__name__)
 
 class TerrierRetriever(EvidenceRetriever):
     def __init__(self, k, filename=""):
@@ -23,7 +23,7 @@ class TerrierRetriever(EvidenceRetriever):
             pt.init(boot_packages=["com.github.terrierteam:terrier-prf:-SNAPSHOT"])
 
     def retrieve(self, rumor_id: str, claim: str, timeline: List[AuthorityPost], **kwargs) -> List:
-        logger_retrieval.info(f"Retrieving documents for rumor_id: {rumor_id}")
+        logger.info(f"retrieving documents for rumor_id: {rumor_id}")
         
         # do retrieval "on-the-fly"
         data = []

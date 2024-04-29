@@ -9,7 +9,7 @@ import os
 from clef.utils.data_loading import AuthorityPost
 
 import logging
-logger_verification = logging.getLogger('clef.retr')
+logger = logging.getLogger(__name__)
 
 class VerificationResult(NamedTuple):
     label: str
@@ -102,7 +102,10 @@ No yapping.
         self.client = OpenAI(
             api_key=(api_key or os.environ.get("OPENAI_API_KEY")),
         )
-        self.assistant_id="asst_XRITdOybDfYpIr4fVevm6qYi"
+        self.assistant_id: str = "asst_XRITdOybDfYpIr4fVevm6qYi"
+        self.total_tokens_used: int = 0
+        self.prompt_tokens_used: int = 0
+        self.completion_tokens_used: int = 0
     
     def get_completion(self, input_message) -> ChatCompletion:
         completion = self.client.chat.completions.create(
@@ -117,28 +120,32 @@ No yapping.
         return completion
     
     def get_assistant_response(self, input_message):
-        thread = client.beta.threads.create()
-        message = client.beta.threads.messages.create(
+        thread = self.client.beta.threads.create()
+        message = self.client.beta.threads.messages.create(
             thread_id=thread.id,
             role="user",
             content=input_message
         )
 
-        run = client.beta.threads.runs.create_and_poll(
+        run = self.client.beta.threads.runs.create_and_poll(
             thread_id=thread.id,
             assistant_id=self.assistant_id,
         )
 
         if run.status == 'completed':
-            messages = client.beta.threads.messages.list(
-                thread_id=thread.id
+            self.total_tokens_used += run.usage.total_tokens
+            self.prompt_tokens_used += run.usage.prompt_tokens
+            self.completion_tokens_used += run.usage.completion_tokens
+            messages = self.client.beta.threads.messages.list(
+                thread_id=thread.id,
+                limit=1
             )
             if messages:
                 for message in messages.data:
                     if message.role == "assistant":
-                        return message.content[0].text.value # type: ignore
+                        return messages.data[0].content[0].text.value # type: ignore
         else:
-            logger_verification.warn(f'could not unpack response from openai model: {run}')
+            logger.warn(f'could not unpack response from openai model: {run}')
             return '{"decision": "NOT ENOUGH INFO", confidence": 1.0}'
 
     
@@ -147,18 +154,16 @@ No yapping.
       
         answer = self.get_assistant_response(input_text)
 
-        try:
-            if answer:
+        if not answer:
+            logger.warn(f'answer was empty, response to input_text text: {input_text}')
+        else:
+            try:
                 decision, confidence = json.loads(answer).values()
-            else:
-                logger_verification.warn(f'answer was empty, response to input_text text: "{evidence}"\nClaim: "{claim}"')
-        except ValueError:
-            logger_verification.warn(f'ERROR: could not json-parse response from openai model: {answer}')
-            return VerificationResult("NOT ENOUGH INFO", 1.0)
+            except ValueError:
+                logger.warn(f'could not json-parse response from openai model: {answer}')
+                return VerificationResult("NOT ENOUGH INFO", 1.0)
 
         if decision in self.valid_labels:
             return VerificationResult(decision, confidence)
         else:
             return VerificationResult("NOT ENOUGH INFO", 1.0)
-
-oaiver = OpenaiVerifier()

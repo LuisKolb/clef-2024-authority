@@ -2,10 +2,10 @@ import re
 from typing import Callable, List, NamedTuple, Tuple
 from tqdm.auto import tqdm
 from clef.utils.data_loading import AuredDataset, AuthorityPost
-from clef.verification.models.open_ai import BaseVerifier
+from clef.verification.models.open_ai import BaseVerifier, OpenaiVerifier
 
 import logging
-logger_verification = logging.getLogger('clef.retr')
+logger = logging.getLogger(__name__)
 
 class VerificationResult(NamedTuple):
     label: str
@@ -90,7 +90,7 @@ class Judge(object):
             # no relevant judgements for the given evidence
             pred_label = "NOT ENOUGH INFO"
 
-        logger_verification.debug(f'judged {pred_label} for confidences {confidences}')
+        logger.debug(f'judged {pred_label} for confidences {confidences}')
 
         return pred_label, predicted_evidence
 
@@ -100,51 +100,65 @@ def judge_using_evidence(rumor_id, claim: str, evidence: List[AuthorityPost], ve
 
     for post in evidence:
         if not post.text:
-            logger_verification.warn(f'evidence text empty for rumor with id {rumor_id}; evidence={post}')
+            logger.warn(f'evidence text empty for rumor with id {rumor_id}; evidence={post}')
             continue
 
         prediction = verifier(claim, post.text)
         evidences_with_decisions.append((claim,post,prediction))
 
+        formatted_text = re.sub(r"\s+", " ", post.text) # replace linebreaks, etc. for pretty printing in a single line
+        print(f'\t{prediction} {formatted_text}')
+
     return  judge(evidences_with_decisions)
     
 
-def run_verifier_on_dataset(dataset: AuredDataset, verifier: BaseVerifier, judge: Judge) -> List:
+def run_verifier_on_dataset(dataset: AuredDataset, verifier: BaseVerifier, judge: Judge, blind: bool = False) -> List:
     res_jsons = []
 
     for i, item in enumerate(dataset):
         rumor_id = item["id"]
-        label = item["label"]
+        if not blind: label = item["label"]
         claim = item["rumor"]
 
         if not item["retrieved_evidence"]:
             # only run fact check if we actually have retrieved evidence
-            logger_verification.warn(f'key "retrieved_evidence" was empty for rumor with id {claim}')
+            logger.warn(f'key "retrieved_evidence" was empty for rumor with id {claim}')
             return []
         
         retrieved_evidence = item["retrieved_evidence"] 
         
-        pred_label, pred_evidence = judge_using_evidence(rumor_id, claim, retrieved_evidence, verifier, judge)
-
         print(f'({i+1}/{len(dataset)}) Verifying {rumor_id}: {claim}')
 
-        for url, post_id, text, confidence in pred_evidence:
-            formatted_text = re.sub(r"\s+", " ", text) # replace linebreaks, etc. for pretty printing in a single line
-            print(f'\t{confidence} {formatted_text}')
+        pred_label, pred_evidence = judge_using_evidence(rumor_id, claim, retrieved_evidence, verifier, judge)
 
-        print(f'label:\t\t{label}')
-        print(f'predicted:\t{pred_label}')
+        if not blind: print(f'label:\t\t{label}')
+        print(f'predicted:\t{pred_label}\tby {judge.__class__}')
 
-        res_jsons.append(
-            {
-                "id": rumor_id,
-                "label": label,
-                "claim": claim,
-                "predicted_label": pred_label,
-                "predicted_evidence": pred_evidence,
-            }
-        )
+        if blind:
+            res_jsons.append(
+                {
+                    "id": rumor_id,
+                    "predicted_label": pred_label,
+                    "predicted_evidence": pred_evidence,
+                }
+            )
+        elif not blind:
+            res_jsons.append(
+                {
+                    "id": rumor_id,
+                    "label": label,
+                    "claim": claim,
+                    "predicted_label": pred_label,
+                    "predicted_evidence": pred_evidence,
+                }
+            )
     
+    if isinstance(verifier, OpenaiVerifier):
+        print(f'-----total token usage for verification-----')
+        print(f'total tokens:\t{verifier.total_tokens_used}')
+        print(f'prompt tokens:\t{verifier.prompt_tokens_used}')
+        print(f'completion tokens:\t{verifier.completion_tokens_used}')
+        print(f'price estimate:\t${((verifier.prompt_tokens_used/1000)*0.01) + ((verifier.completion_tokens_used/1000)*0.03)}')
     return res_jsons
 
 #
