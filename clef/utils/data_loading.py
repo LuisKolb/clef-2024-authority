@@ -2,7 +2,7 @@ from typing import Generator, List, Tuple, Dict, TypedDict, Union, Optional, Nam
 import json
 import os
 import re
-from clef.utils.preprocessing import clean_text_basic
+from clef.utils.preprocessing import clean_text_custom
 
 import logging
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ class AuredDataset(object):
             if not self.blind_run and item['evidence']:
                 item['evidence'] = self.format_posts(item['evidence'])
             if self.preprocess:
-                item['rumor'] = clean_text_basic(item['rumor'])
+                item['rumor'] = clean_text_custom(item['rumor'])
     
     def get_grouped_rumors(self):
         """
@@ -108,7 +108,12 @@ class AuredDataset(object):
                 author_info = json.load(file)
 
         for post in post_list:
-            new_post_text = f'AuthorityStatement: "{post.text}"'
+            # use regex to verify if the account url is valid  
+            if re.match(r'(https:\/\/)?twitter.com/[\w+]{1,15}\b', post.url) and not self.add_author_name:
+                new_post_text = f'Statement from Authority Account "{post.url.split("/")[-1]}": "{post.text}"'
+            else:
+                # dont add author handle here if author name is added later
+                new_post_text = f'Statement: "{post.text}"'
 
             if author_info:
                 account = post.url.strip()
@@ -116,12 +121,18 @@ class AuredDataset(object):
                 bio = author_info[account]["translated_bio"]
                 
                 if self.add_author_bio:
-                    new_post_text = f'AuthorityDescription: {bio}\n' + new_post_text
+                    new_post_text = f'Authority Description: "{bio}"\n' + new_post_text
                 if self.add_author_name:
-                    new_post_text = f'AuthorityName: {name}\n' + new_post_text
+                    new_post_text = f'Authority Name: "{name}"\n' + new_post_text
+                
+                # if all info is added, evidence will look like this:
+                # 
+                # Authority Description: "{bio}"
+                # Authority Name: "{name}"
+                # Statement from {twitter handle}: "{post.text}"
 
             if self.preprocess:
-                new_post_text = clean_text_basic(new_post_text)
+                new_post_text = clean_text_custom(new_post_text)
             
             new_post_list.append(AuthorityPost(post.url, post.post_id, new_post_text, None, None))
         return new_post_list
@@ -287,7 +298,7 @@ def write_jsonlines_from_dicts(filename: Union[str, os.PathLike], dicts: List[Di
 
 
 def clean_jsons(jsons):
-    from clef.utils.preprocessing import clean_text_basic
+    from clef.utils.preprocessing import clean_text_custom
 
     data_cleaned = []
 
@@ -295,19 +306,19 @@ def clean_jsons(jsons):
         
         tl_clean = []
         for account_url, tl_tweet_id, tl_tweet in entry['timeline']:
-            tl_tweet_cleaned = clean_text_basic(tl_tweet)
+            tl_tweet_cleaned = clean_text_custom(tl_tweet)
             if tl_tweet_cleaned:
                 tl_clean += [[account_url, tl_tweet_id, tl_tweet_cleaned]]
 
         ev_clean = []
         for account_url, ev_tweet_id, ev_tweet in entry['evidence']:
-            ev_tweet_cleaned = clean_text_basic(ev_tweet)
+            ev_tweet_cleaned = clean_text_custom(ev_tweet)
             if ev_tweet_cleaned:
                 ev_clean += [[account_url, ev_tweet_id, ev_tweet_cleaned]]
 
         data_cleaned += [{
             'id': entry['id'],
-            'rumor': clean_text_basic(entry['rumor']),
+            'rumor': clean_text_custom(entry['rumor']),
             'label': entry['label'],
             'timeline': tl_clean,
             'evidence': ev_clean,
@@ -327,8 +338,8 @@ def add_author_info(dataset, preprocess, add_author_bio, add_author_name, author
             bio = author_info[account.strip()]["translated_bio"]
 
             if preprocess:
-                name = clean_text_basic(name)
-                bio = clean_text_basic(bio)
+                name = clean_text_custom(name)
+                bio = clean_text_custom(bio)
             
             new_tweet_text = f'Text: {tweet_text}'
             if add_author_bio:
@@ -346,8 +357,8 @@ def add_author_info(dataset, preprocess, add_author_bio, add_author_name, author
             bio = author_info[account.strip()]["translated_bio"]
 
             if preprocess:
-                name = clean_text_basic(name)
-                bio = clean_text_basic(bio)
+                name = clean_text_custom(name)
+                bio = clean_text_custom(bio)
             
             new_tweet_text = f'Text: {tweet_text}'
             if add_author_bio:
@@ -387,3 +398,17 @@ def load_datasets(preprocess: bool, root_path: str, add_author_name: bool = Fals
             
             
     return (train_jsons, dev_jsons)
+
+
+if __name__ == "__main__":
+    config = {
+        'blind_run': True,
+        'preprocess': True,
+        'add_author_name': False,
+        'add_author_bio': False,
+    }
+
+    root_dir = os.path.join('..', '..') # where setup.py is located
+    ds = AuredDataset(os.path.join(root_dir, 'clef2024-checkthat-lab', 'task5', 'data', 'English_test.json'), **config)
+
+    print(ds[3])

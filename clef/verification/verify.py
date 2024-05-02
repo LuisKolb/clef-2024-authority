@@ -7,6 +7,9 @@ from clef.verification.models.open_ai import BaseVerifier, OpenaiVerifier
 import logging
 logger = logging.getLogger(__name__)
 
+# second logger for logging claim and evidence text score + judgement
+logger_text_score = logging.getLogger('clef.verification.verify_log')
+
 class VerificationResult(NamedTuple):
     label: str
     score: float
@@ -107,7 +110,8 @@ def judge_using_evidence(rumor_id, claim: str, evidence: List[AuthorityPost], ve
         evidences_with_decisions.append((claim,post,prediction))
 
         formatted_text = re.sub(r"\s+", " ", post.text) # replace linebreaks, etc. for pretty printing in a single line
-        print(f'\t{prediction} {formatted_text}')
+        logger_text_score.info(f'\t{prediction} "{formatted_text}"')
+        print(f'\t{prediction} "{formatted_text}"')
 
     return  judge(evidences_with_decisions)
     
@@ -127,12 +131,21 @@ def run_verifier_on_dataset(dataset: AuredDataset, verifier: BaseVerifier, judge
         
         retrieved_evidence = item["retrieved_evidence"] 
         
+        # also log to dedicated logger for text score and judgement
+        logger_text_score.info(f'({i+1}/{len(dataset)}) Verifying {rumor_id}: {claim}')
         print(f'({i+1}/{len(dataset)}) Verifying {rumor_id}: {claim}')
 
         pred_label, pred_evidence = judge_using_evidence(rumor_id, claim, retrieved_evidence, verifier, judge)
 
-        if not blind: print(f'label:\t\t{label}')
+        if not blind:
+            logger_text_score.info(f'label:\t\t{label}')
+            print(f'label:\t\t{label}')
+        
+        logger_text_score.info(f'predicted:\t{pred_label}\tby {judge.__class__}')
         print(f'predicted:\t{pred_label}\tby {judge.__class__}')
+        
+        logger_text_score.info('\n')
+        print('\n')
 
         if blind:
             res_jsons.append(
@@ -154,6 +167,11 @@ def run_verifier_on_dataset(dataset: AuredDataset, verifier: BaseVerifier, judge
             )
     
     if isinstance(verifier, OpenaiVerifier):
+        logger_text_score.info(f'-----total token usage for verification-----')
+        logger_text_score.info(f'total tokens:\t{verifier.total_tokens_used}')
+        logger_text_score.info(f'prompt tokens:\t{verifier.prompt_tokens_used}')
+        logger_text_score.info(f'completion tokens:\t{verifier.completion_tokens_used}')
+        logger_text_score.info(f'price estimate:\t${((verifier.prompt_tokens_used/1000)*0.01) + ((verifier.completion_tokens_used/1000)*0.03)}')
         print(f'-----total token usage for verification-----')
         print(f'total tokens:\t{verifier.total_tokens_used}')
         print(f'prompt tokens:\t{verifier.prompt_tokens_used}')
