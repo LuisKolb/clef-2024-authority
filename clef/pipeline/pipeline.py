@@ -9,19 +9,12 @@ from typing import Optional
 from clef.utils.data_loading import AuredDataset, write_jsonlines_from_dicts
 from clef.utils.data_loading import write_trec_format_output
 from clef.utils.scoring import eval_run_custom
-from clef.verification.models.open_ai import OpenaiVerifier
 from clef.verification.verify import Judge, run_verifier_on_dataset
 
 import logging
 logger = logging.getLogger(__name__)
 
 def step_retrieval(ds: AuredDataset, config, golden_labels_file):
-    # ensure out_dir directories exist for saving output (required for anserini, etc - not only for eval)
-    if not os.path.exists(config['out_dir']):
-        os.makedirs(config['out_dir'])
-        if not os.path.exists(os.path.join(config['out_dir'], 'eval')):
-            os.makedirs(os.path.join(config['out_dir'], 'eval'))
-
     """
     step 1 output format:
 
@@ -117,11 +110,17 @@ def step_verification(ds: AuredDataset, config,  ground_truth_filepath):
     We use the Macro-F1 to evaluate the classification of the rumors. 
     Additionally, we will consider a Strict Macro-F1 where the rumor label is considered correct only if at least one retrieved authority evidence is correct.
     """
+    if 'LLAMA' in  config['verifier_label'].upper():
+        from clef.verification.models.hf_llama3 import Llama3Verifier
+        verifier = Llama3Verifier()
+
+    elif 'OPENAI' in config['verifier_label'].upper():
+        from clef.verification.models.open_ai import OpenaiVerifier
+        verifier = OpenaiVerifier()
+    
     trec_filepath = f'{config["out_dir"]}/{config["retriever_label"]}-{config["split"]}.trec.txt'
     ds.add_trec_file_judgements(trec_filepath, sep=' ',
                                 normalize_scores=config['normalize_scores'])
-
-    verifier = OpenaiVerifier()
 
     solomon = Judge(scale=config['scale'], 
                     ignore_nei=config['ignore_nei'])

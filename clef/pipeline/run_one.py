@@ -17,13 +17,20 @@ config = {
     'preprocess': True,
     'add_author_name': False,
     'add_author_bio': False,
-    'out_dir': './data-out/runs/zero',
+    'out_dir': './data-out/runs/zerol',
     'retriever_k': 5,
-    'retriever_label': 'OPENAI',
+    'retriever_label': 'TERRIER',
+    'verifier_label': 'LLAMA',
     'normalize_scores': True,
     'scale': False, 
     'ignore_nei': True,
 }
+
+# ensure out_dir directories exist for saving output (required for anserini, etc - not only for eval)
+if not os.path.exists(config['out_dir']):
+    os.makedirs(config['out_dir'])
+    if not os.path.exists(os.path.join(config['out_dir'], 'eval')):
+        os.makedirs(os.path.join(config['out_dir'], 'eval'))
 
 setup_logging(config['out_dir'])
 

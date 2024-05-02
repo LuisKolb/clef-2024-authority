@@ -9,11 +9,9 @@ import os
 from clef.utils.data_loading import AuthorityPost
 
 import logging
-logger = logging.getLogger(__name__)
 
-class VerificationResult(NamedTuple):
-    label: str
-    score: float
+from clef.verification.verify import VerificationResult
+logger = logging.getLogger(__name__)
 
 client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY"), # This is the default and can be omitted
@@ -150,7 +148,7 @@ No yapping.
 
     
     def verify(self, claim: str, evidence: str) -> VerificationResult:
-        input_text = f'"{evidence}"\nClaim: "{claim}"'
+        input_text = f'"{evidence}"\n\nClaim: "{claim}"'
       
         answer = self.get_assistant_response(input_text)
 

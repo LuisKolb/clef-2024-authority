@@ -2,7 +2,6 @@ import re
 from typing import Callable, List, NamedTuple, Tuple
 from tqdm.auto import tqdm
 from clef.utils.data_loading import AuredDataset, AuthorityPost
-from clef.verification.models.open_ai import BaseVerifier, OpenaiVerifier
 
 import logging
 logger = logging.getLogger(__name__)
@@ -13,6 +12,8 @@ logger_text_score = logging.getLogger('clef.verification.verify_log')
 class VerificationResult(NamedTuple):
     label: str
     score: float
+
+from clef.verification.models.open_ai import BaseVerifier, OpenaiVerifier
 
 class Judge(object):
     scale: bool
@@ -132,8 +133,8 @@ def run_verifier_on_dataset(dataset: AuredDataset, verifier: BaseVerifier, judge
         retrieved_evidence = item["retrieved_evidence"] 
         
         # also log to dedicated logger for text score and judgement
-        logger_text_score.info(f'({i+1}/{len(dataset)}) Verifying {rumor_id}: {claim}')
-        print(f'({i+1}/{len(dataset)}) Verifying {rumor_id}: {claim}')
+        logger_text_score.info(f'({i+1}/{len(dataset)}) Verifying {rumor_id}: "{claim}"')
+        print(f'({i+1}/{len(dataset)}) Verifying {rumor_id}: "{claim}"')
 
         pred_label, pred_evidence = judge_using_evidence(rumor_id, claim, retrieved_evidence, verifier, judge)
 
