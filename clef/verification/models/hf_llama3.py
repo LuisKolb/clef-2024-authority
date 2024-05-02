@@ -1,5 +1,6 @@
 import requests
 import collections
+from collections.abc import Mapping
 import os
 import re
 
@@ -48,7 +49,7 @@ def inference_hf_llama3(statement: str, evidence: str, model_string: str = 'inst
         "inputs": prompt
     })
 
-    if not result or not len(result) or not isinstance(result[0], collections.Mapping) or 'generated_text' not in result[0]:
+    if not result or not len(result) or not isinstance(result[0], Mapping) or 'generated_text' not in result[0]:
         print(f'ERROR: unexpected answer from API: {result}')
         return ("NOT ENOUGH INFO", float(1))
 

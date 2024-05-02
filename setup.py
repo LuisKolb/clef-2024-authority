@@ -17,7 +17,8 @@ setup(
         "jsonlines",
         "openai",
         "plotly",
-        "matplotlib"
+        "matplotlib",
+        "transformers",
     ],
     packages=find_packages(".", ["clef/*"]),
 )
