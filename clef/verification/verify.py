@@ -115,7 +115,7 @@ def judge_using_evidence(rumor_id, claim: str, evidence: List[AuthorityPost], ve
         print(f'\t{prediction} "{formatted_text}"')
 
     return  judge(evidences_with_decisions)
-    
+
 
 def run_verifier_on_dataset(dataset: AuredDataset, verifier: BaseVerifier, judge: Judge, blind: bool = False) -> List:
     res_jsons = []
@@ -179,6 +179,39 @@ def run_verifier_on_dataset(dataset: AuredDataset, verifier: BaseVerifier, judge
         print(f'completion tokens:\t{verifier.completion_tokens_used}')
         print(f'price estimate:\t${((verifier.prompt_tokens_used/1000)*0.01) + ((verifier.completion_tokens_used/1000)*0.03)}')
     return res_jsons
+
+
+def predict_evidence(dataset: AuredDataset, verifier: BaseVerifier) -> dict:
+    decisions_by_id = {}
+    logger_text_score.info(f'running {verifier.__class__.__name__} verifier')
+    for i, item in enumerate(dataset):
+        rumor_id = item["id"]
+        claim = item["rumor"]
+
+        if not item["retrieved_evidence"]:
+            # only run fact check if we actually have retrieved evidence
+            logger.warn(f'key "retrieved_evidence" was empty for rumor with id {claim}')
+            return {}
+        
+        retrieved_evidence = item["retrieved_evidence"] 
+        
+        # also log to dedicated logger for text score and judgement
+        logger_text_score.info(f'({i+1}/{len(dataset)}) Verifying {rumor_id}: "{claim}"')
+        # print(f'({i+1}/{len(dataset)}) Verifying {rumor_id}: "{claim}"')
+
+        if rumor_id not in decisions_by_id:
+            decisions_by_id[rumor_id] = []
+
+        for post in retrieved_evidence:
+            
+            if not post.text:
+                logger.warn(f'evidence text empty for rumor with id {rumor_id}; evidence={post}')
+                continue
+
+            prediction = verifier(claim, post.text)
+            decisions_by_id[rumor_id].append((post.post_id, prediction))
+    
+    return decisions_by_id
 
 #
 # OLD CODE

@@ -100,7 +100,7 @@ class AuredDataset(object):
                 jsons += [json.loads(line)]
         return jsons
     
-    def format_posts(self, post_list: List[AuthorityPost], author_info_filepath: str = '../../clef/data/author-data-translated.json'):
+    def format_posts(self, post_list: List[AuthorityPost], author_info_filepath: str = '../../clef/data/combined-author-data-translated.json'):
         new_post_list = []
         author_info = {}
         if self.add_author_bio or self.add_author_name:

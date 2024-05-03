@@ -71,7 +71,10 @@ def step_retrieval(ds: AuredDataset, config, golden_labels_file):
     trec_filepath = f'{config["out_dir"]}/{config["retriever_label"]}-{config["split"]}.trec.txt'
     write_trec_format_output(trec_filepath, data, config['retriever_label'])
 
-    if not config["blind_run"]:
+    if config["blind_run"]:
+        # running blind
+        return trec_filepath
+    else:
         # gold labels available
         from clef.utils.scoring import eval_run_retrieval
         r5, meanap = [v for v in eval_run_retrieval(trec_filepath, golden_labels_file).values()]
@@ -80,9 +83,7 @@ def step_retrieval(ds: AuredDataset, config, golden_labels_file):
         with open(os.path.join(config['out_dir'], 'eval', 'log.txt'), 'a') as fh:
             fh.write(f'result for retrieval run - R@5: {r5:.4f} MAP: {meanap:.4f} with config {config}\n')
         return r5, meanap
-    else:
-        # running blind
-        return trec_filepath
+        
 
 
 def step_verification(ds: AuredDataset, config,  ground_truth_filepath):
@@ -131,7 +132,10 @@ def step_verification(ds: AuredDataset, config,  ground_truth_filepath):
     write_jsonlines_from_dicts(verification_outfile, verification_results)
 
     # only run evaluation scoring if not running blind
-    if not config["blind_run"]:
+    if config["blind_run"]:
+        # running blind
+        return verification_outfile
+    else:
         # gold labels available
         macro_f1, sctrict_macro_f1 = eval_run_custom(verification_outfile, ground_truth_filepath, '')
 
@@ -140,9 +144,7 @@ def step_verification(ds: AuredDataset, config,  ground_truth_filepath):
             fh.write(f'result for verification run - Strict-F1: {macro_f1:.4f} Strict-Macro-F1: {sctrict_macro_f1:.4f} with config {config} and TREC FILE {trec_filepath}\n')
 
         return macro_f1, sctrict_macro_f1
-    else:
-        # running blind
-        return verification_outfile
+        
 
 
 def run_pipeline(data_path: str, root_path: str, task5_dir: str, config: dict):
