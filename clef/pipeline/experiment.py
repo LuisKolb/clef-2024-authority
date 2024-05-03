@@ -62,9 +62,9 @@ def find_best_config_fp(exp_path, mode='retrieval', score_by='MAP'):
 
 root_path = '../../' # path to github repository root level (where setup.py is located)
 
-json_data_filepath = os.path.join(root_path, 'clef', 'data', 'combined_data.jsonl')
+json_data_filepath = os.path.join(root_path, 'clef2024-checkthat-lab', 'task5', 'data', 'English_dev.json')
 
-golden_labels_file = os.path.join(root_path, 'clef', 'data', 'combined_qrels.txt') # relative to root
+golden_labels_file = os.path.join(root_path, 'clef2024-checkthat-lab', 'task5', 'data', 'dev_qrels.txt') # relative to root
 
 configs_retrieval = []
 configs_verification = []
@@ -80,7 +80,7 @@ for retriever in ['TERRIER', 'OPENAI']:
                     'add_author_name': add_author_name,
                     'add_author_bio': add_author_bio,
                     'retriever_k': 5,
-                    'out_dir': f'./data-out/experiments/test-all/retr-{retriever}/{fingerprint}',
+                    'out_dir': f'./data-out/experiments/test-dev/retr-{retriever}/{fingerprint}',
                     'preprocess': preprocess,
                     'retriever_label': retriever,
                 }
@@ -129,7 +129,7 @@ if __name__ == '__main__':
     score_by='MAP'
     for retriever in ['TERRIER', 'OPENAI']:
 
-        configs = find_best_config_fp(f'./data-out/experiments/test-all/retr-{retriever}', mode, score_by)
+        configs = find_best_config_fp(f'./data-out/experiments/test-dev/retr-{retriever}', mode, score_by)
         for i, (f1, config) in enumerate(configs):
             logger_exp.info(f'{mode} {retriever} - {i+1}. {score_by} score: {f1:.4f}, config: {config}')
 
@@ -214,7 +214,7 @@ if __name__ == '__main__':
     # find best config for verification overall
     mode = 'verification'
     score_by='F1'
-    configs = find_best_config_fp(f'./data-out/experiments/test-all', mode, score_by)
+    configs = find_best_config_fp(f'./data-out/experiments/test-dev', mode, score_by)
     for i, (f1, config) in enumerate(configs):
         logger_exp.info(f'{mode} - {i+1}. {score_by} score: {f1:.4f}, config: {config}')
     

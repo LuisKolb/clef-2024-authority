@@ -112,7 +112,7 @@ def judge_using_evidence(rumor_id, claim: str, evidence: List[AuthorityPost], ve
 
         formatted_text = re.sub(r"\s+", " ", post.text) # replace linebreaks, etc. for pretty printing in a single line
         logger_text_score.info(f'\t{prediction} "{formatted_text}"')
-        print(f'\t{prediction} "{formatted_text}"')
+        # print(f'\t{prediction} "{formatted_text}"')
 
     return  judge(evidences_with_decisions)
 
@@ -134,19 +134,19 @@ def run_verifier_on_dataset(dataset: AuredDataset, verifier: BaseVerifier, judge
         
         # also log to dedicated logger for text score and judgement
         logger_text_score.info(f'({i+1}/{len(dataset)}) Verifying {rumor_id}: "{claim}"')
-        print(f'({i+1}/{len(dataset)}) Verifying {rumor_id}: "{claim}"')
+        # print(f'({i+1}/{len(dataset)}) Verifying {rumor_id}: "{claim}"')
 
         pred_label, pred_evidence = judge_using_evidence(rumor_id, claim, retrieved_evidence, verifier, judge)
 
         if not blind:
             logger_text_score.info(f'label:\t\t{label}')
-            print(f'label:\t\t{label}')
+            # print(f'label:\t\t{label}')
         
         logger_text_score.info(f'predicted:\t{pred_label}\tby {judge.__class__}')
-        print(f'predicted:\t{pred_label}\tby {judge.__class__}')
+        # print(f'predicted:\t{pred_label}\tby {judge.__class__}')
         
         logger_text_score.info('\n')
-        print('\n')
+        # print('\n')
 
         if blind:
             res_jsons.append(
