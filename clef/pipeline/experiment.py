@@ -16,9 +16,6 @@ json_data_filepath = os.path.join(root_path, 'clef', 'data', 'combined_data.json
 
 golden_labels_file = os.path.join(root_path, 'clef', 'data', 'combined_qrels.txt') # relative to root
 
-highest_f1_score = 0
-best_config = {}
-
 for preprocess in [True, False]:
     for norm in [True, False]:
         for scale in [True, False]:
@@ -51,11 +48,3 @@ for preprocess in [True, False]:
                 r5, meanap = step_retrieval(ds=ds, config=config, golden_labels_file=golden_labels_file)
 
                 macro_f1, sctrict_macro_f1 = step_verification(ds=ds, config=config, ground_truth_filepath=json_data_filepath)
-                
-                if macro_f1 > highest_f1_score: # type: ignore
-                    highest_f1_score = macro_f1
-                    print(f"New Highest Macro-F1: {macro_f1:.4f} with config {config}")
-
-
-print(f"Best Result: Macro-F1: {macro_f1:.4f} Strict-Macro-F1: {sctrict_macro_f1:.4f} with config {config}")
-print(f"find it in {config['out_dir']}")
