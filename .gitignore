@@ -168,6 +168,7 @@ WatClaimCheck/*
 
 # don't track json files with author info
 clef/data/*.json
+clef/data/*.jsonl
 clef/data/*.csv
 
 # don't track train qrels file

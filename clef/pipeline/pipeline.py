@@ -121,7 +121,7 @@ def step_verification(ds: AuredDataset, config,  ground_truth_filepath):
     trec_filepath = f'{config["out_dir"]}/{config["retriever_label"]}-{config["split"]}.trec.txt'
     ds.add_trec_file_judgements(trec_filepath, sep=' ',
                                 normalize_scores=config['normalize_scores'])
-
+    
     solomon = Judge(scale=config['scale'], 
                     ignore_nei=config['ignore_nei'])
     
@@ -139,7 +139,7 @@ def step_verification(ds: AuredDataset, config,  ground_truth_filepath):
         with open(os.path.join(config['out_dir'], 'eval', 'log.txt'), 'a') as fh:
             fh.write(f'result for verification run - Strict-F1: {macro_f1:.4f} Strict-Macro-F1: {sctrict_macro_f1:.4f} with config {config} and TREC FILE {trec_filepath}\n')
 
-        return verification_results
+        return macro_f1, sctrict_macro_f1
     else:
         # running blind
         return verification_outfile
