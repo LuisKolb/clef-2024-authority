@@ -153,7 +153,7 @@ No yapping.
         answer = self.get_assistant_response(input_text)
 
         if not answer:
-            logger.warn(f'answer was empty, response to input_text text: {input_text}')
+            logger.warn(f'!!! answer was empty in response to input_text text: {input_text}')
         else:
             try:
                 decision, confidence = json.loads(answer).values()
@@ -161,7 +161,7 @@ No yapping.
                 logger.warn(f'could not json-parse response from openai model: {answer}')
                 return VerificationResult("NOT ENOUGH INFO", 1.0)
 
-        if decision in self.valid_labels:
+        if decision and decision in self.valid_labels:
             return VerificationResult(decision, confidence)
         else:
             return VerificationResult("NOT ENOUGH INFO", 1.0)

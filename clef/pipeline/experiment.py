@@ -21,20 +21,19 @@ def find_best_config_str(exp_path, mode='retrieval', score_by='MAP'):
                 with open(os.path.join(root, file)) as f:
                     for line in f:
                         if f'result for {mode} run' in line:
-                            f1 = float(line.split(f'{score_by}: ')[1].split(' ')[0])
+                            score = float(line.split(f'{score_by}: ')[1].split(' ')[0])
                             # now, get string between the brackets { and }
                             configs = '{' + line.split('{')[1].split('}')[0] + '}'
                             # replace single quotes with double quotes
                             configs = configs.replace("'", '"')
                             # convert each boolean value to string
-                            configs = configs.replace(': True,', ': "True",')
-                            configs = configs.replace(': False,', ': "False",')
-                            
+                            configs = configs.replace(': True', ': "True"')
+                            configs = configs.replace(': False', ': "False"')
                             # convert to json
                             config = json.loads(configs)
-                            l.append((f1, config))
+                            l.append((score, config))
 
-    # sort the list by the first element, which is the f1 score
+    # sort the list by the first element, which is the score
     l.sort(key=lambda x: x[0], reverse=True)
     return l
 
@@ -64,10 +63,10 @@ root_path = '../../' # path to github repository root level (where setup.py is l
 
 json_data_filepath = os.path.join(root_path, 'clef2024-checkthat-lab', 'task5', 'data', 'English_dev.json')
 
-golden_labels_file = os.path.join(root_path, 'clef2024-checkthat-lab', 'task5', 'data', 'dev_qrels.txt') # relative to root
+golden_labels_file = os.path.join(root_path, 'clef2024-checkthat-lab', 'task5', 'data', 'dev_qrels.txt')
 
 configs_retrieval = []
-configs_verification = []
+configs_judge = []
 
 for retriever in ['TERRIER', 'OPENAI']:
     for preprocess in [True, False]:
@@ -76,7 +75,7 @@ for retriever in ['TERRIER', 'OPENAI']:
                 fingerprint = f'{"pre" if preprocess else "nopre"}-{"name" if add_author_name else "noname"}-{"bio" if add_author_bio else "nobio"}'
                 config = {
                     'blind_run': False,
-                    'split': 'combined',
+                    'split': 'dev',
                     'add_author_name': add_author_name,
                     'add_author_bio': add_author_bio,
                     'retriever_k': 5,
@@ -93,9 +92,6 @@ for retriever in ['TERRIER', 'OPENAI']:
                 
                 configs_retrieval.append(config)
 
-for verifier_label in ['LLAMA', 'OPENAI']:
-    pass
-
 # judge options
 for norm in [True, False]:
     for scale in [True, False]:
@@ -108,7 +104,7 @@ for norm in [True, False]:
                 'fingerprint': fingerprint,
             }
             
-            configs_verification.append(config)
+            configs_judge.append(config)
 
 if __name__ == '__main__':
 
@@ -155,7 +151,7 @@ if __name__ == '__main__':
 
             verification_decisions = predict_evidence(ds, verifier)
 
-            for c in configs_verification:
+            for c in configs_judge:
                 config_jdg = {
                     **best_config,
                     **c,
@@ -169,9 +165,9 @@ if __name__ == '__main__':
                 solomon = Judge(scale=config_jdg['scale'], ignore_nei=config_jdg['ignore_nei'])
 
                 ds_grouped = ds.get_grouped_rumors()
-                evidence_predictions = []
                 res_jsons = []
                 for rumor_id in ds_grouped:
+                    evidence_predictions = []
                     claim = ds_grouped[rumor_id]['rumor']
                     label = ds_grouped[rumor_id]['label']
                     retrieved_evidence = ds_grouped[rumor_id]['retrieved_evidence']
@@ -232,9 +228,10 @@ if __name__ == '__main__':
         ext_data = sorted(ext_data, key=lambda x: x[0], reverse=True)
 
         for i, (f1, config) in enumerate(no_ext_data):
-            logger_exp.info(f'{mode} no ext data - {i+1}. {score_by} score: {f1:.4f}, config: {config}')
+            logger_exp.info(f'{mode} no ext data - {i+1}. {score_by} score: {f1:.4f}, config: {config["out_dir"]}/{config["fingerprint"]} - {config}')
 
         for i, (f1, config) in enumerate(ext_data):
-            logger_exp.info(f'{mode} using ext data - {i+1}. {score_by} score: {f1:.4f}, config: {config}')    
+            logger_exp.info(f'{mode} using ext data - {i+1}. {score_by} score: {f1:.4f}, config: {config["out_dir"]}/{config["fingerprint"]} - {config}')    
+
     except:
         pass

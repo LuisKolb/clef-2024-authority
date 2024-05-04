@@ -25,7 +25,7 @@ class RumorWithEvidence(TypedDict):
 
 
 class AuredDataset(object):
-    def __init__(self, filepath, preprocess, add_author_name, add_author_bio, blind_run, **kwargs) -> None:
+    def __init__(self, filepath, preprocess, add_author_name, add_author_bio, blind_run, author_info_filepath='../../clef/data/combined-author-data-translated.json', **kwargs) -> None:
         self.filepath: Union[str, os.PathLike] = filepath
         self.rumors: List[RumorWithEvidence] = []
 
@@ -44,6 +44,7 @@ class AuredDataset(object):
         self.add_author_name: bool = add_author_name
         self.add_author_bio: bool = add_author_bio
         self.blind_run: bool = blind_run
+        self.author_info_filepath: str = author_info_filepath
 
         self.load_rumor_data()
 
@@ -100,11 +101,11 @@ class AuredDataset(object):
                 jsons += [json.loads(line)]
         return jsons
     
-    def format_posts(self, post_list: List[AuthorityPost], author_info_filepath: str = '../../clef/data/combined-author-data-translated.json'):
+    def format_posts(self, post_list: List[AuthorityPost]):
         new_post_list = []
         author_info = {}
         if self.add_author_bio or self.add_author_name:
-            with open(author_info_filepath, 'r') as file:
+            with open(self.author_info_filepath, 'r') as file:
                 author_info = json.load(file)
 
         for post in post_list:
@@ -117,6 +118,8 @@ class AuredDataset(object):
 
             if author_info:
                 account = post.url.strip()
+                if not account.startswith('https://'):
+                    account = f'https://{account}'
                 name = author_info[account]["translated_name"]
                 bio = author_info[account]["translated_bio"]
                 
