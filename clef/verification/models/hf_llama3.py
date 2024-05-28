@@ -1,3 +1,5 @@
+import time
+from exceptiongroup import catch
 import requests
 from collections.abc import Mapping
 import os
@@ -45,9 +47,18 @@ No yapping.
             tokenize=False,
             add_generation_prompt=True,
         )
+        
+
         result = self.query({
             "inputs": prompt
         })
+
+        if result and not isinstance(result, list) and 'error' in result[0].keys():
+            time.sleep(3600) # sleep for an hour is hourly rate limit reached'
+            print('hourly rate limit reached, sleeping for an hour')
+            result = self.query({
+                "inputs": prompt
+            })
 
         if not result or not len(result) or not isinstance(result[0], Mapping) or 'generated_text' not in result[0]:
             print(f'ERROR: unexpected answer from API: {result}')

@@ -137,13 +137,13 @@ def step_verification(ds: AuredDataset, config,  ground_truth_filepath):
         return verification_outfile
     else:
         # gold labels available
-        macro_f1, sctrict_macro_f1 = eval_run_custom(verification_outfile, ground_truth_filepath, '')
+        macro_f1, strict_macro_f1 = eval_run_custom(verification_outfile, ground_truth_filepath, '')
 
-        logger.info(f'result for verification run - Strict-F1: {macro_f1:.4f} Strict-Macro-F1: {sctrict_macro_f1:.4f} with config {config} and TREC FILE {trec_filepath}')
+        logger.info(f'result for verification run - Macro-F1: {macro_f1:.4f} Strict-Macro-F1: {strict_macro_f1:.4f} with config {config} and TREC FILE {trec_filepath}')
         with open(os.path.join(config['out_dir'], 'eval', 'log.txt'), 'a') as fh:
-            fh.write(f'result for verification run - Strict-F1: {macro_f1:.4f} Strict-Macro-F1: {sctrict_macro_f1:.4f} with config {config} and TREC FILE {trec_filepath}\n')
+            fh.write(f'result for verification run - Macro-F1: {macro_f1:.4f} Strict-Macro-F1: {strict_macro_f1:.4f} with config {config} and TREC FILE {trec_filepath}\n')
 
-        return macro_f1, sctrict_macro_f1
+        return macro_f1, strict_macro_f1
         
 
 

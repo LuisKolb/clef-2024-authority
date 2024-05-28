@@ -176,6 +176,9 @@ clef/data/*.txt
 
 # don't track output files
 **/data-out/*
+**/experiments-data/*
 
 # pyserini dynamic index
 **/temp/*
+
+*.zip

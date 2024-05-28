@@ -17,7 +17,7 @@ def find_best_config_str(exp_path, mode='retrieval', score_by='MAP'):
     for root, dirs, files in os.walk(exp_path):
         for file in files:
             if file.endswith('log.txt'):
-                # open file, and for each line test if it contains the string "result for verification run - "
+                # open file, and for each line test if it contains the string "result for {mode} run - "
                 with open(os.path.join(root, file)) as f:
                     for line in f:
                         if f'result for {mode} run' in line:
@@ -43,7 +43,7 @@ def find_best_config_fp(exp_path, mode='retrieval', score_by='MAP'):
     for root, dirs, files in os.walk(exp_path):
         for file in files:
             if file.endswith('log.txt'):
-                # open file, and for each line test if it contains the string "result for verification run - "
+                # open file, and for each line test if it contains the string "result for {mode} run - "
                 with open(os.path.join(root, file)) as f:
                     for line in f:
                         if f'result for {mode} run' in line:
@@ -190,7 +190,7 @@ if __name__ == '__main__':
                         "predicted_evidence": pred_evidence,
                     }
                     res_jsons += [predicted]
-
+                
                 if not os.path.exists(os.path.join(config_jdg['out_dir'], config_jdg['fingerprint'])):
                     os.makedirs(os.path.join(config_jdg['out_dir'], config_jdg['fingerprint'], 'eval'))
 
