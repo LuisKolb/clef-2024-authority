@@ -49,7 +49,7 @@ class TerrierRetriever(EvidenceRetriever):
         # metadata is optional here
         bm25 = BatchRetrieve(indexref, wmodel="BM25", controls={"termpipelines": "Stopwords,PorterStemmer"}, metadata=["docno", "text"])
         pl2 = BatchRetrieve(indexref, wmodel="PL2", controls={"termpipelines": "Stopwords,PorterStemmer"}, metadata=["docno", "text"])
-        pipeline = (bm25) >> (pl2 % 5)
+        pipeline = (bm25 % 10) >> (pl2 % 5)
         
         # results are returned in form of a pandas dataframe
         rtr_df = pipeline(data)

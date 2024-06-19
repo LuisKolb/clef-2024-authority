@@ -49,7 +49,7 @@ def find_best_config_fp(exp_path, mode='retrieval', score_by='MAP'):
 # Define parameters
 root_path = '../../'  # Path to repository root
 split = 'dev'
-experiment_base_path = f'./experiments-data/split-{split}' 
+experiment_base_path = f'./experiments-data-temp/split-{split}' 
 json_data_filepath = os.path.join(root_path, 'clef2024-checkthat-lab', 'task5', 'data', f'English_{split}.json')
 golden_labels_file = os.path.join(root_path, 'clef2024-checkthat-lab', 'task5', 'data', f'{split}_qrels.txt')
 
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     set_exp_logger()
     logger_experiment = logging.getLogger('clef.experiment')
     
-    skip_retrieval = True # set to True to skip retrieval steps
+    skip_retrieval = False # set to True to skip retrieval steps
     if not skip_retrieval:
         # Execute retrieval steps
         for config in configs_retrieval:
@@ -127,8 +127,8 @@ if __name__ == '__main__':
             setup_logging(config['out_dir'])
             ds = AuredDataset(json_data_filepath, **config)
             step_retrieval(ds=ds, config=config, golden_labels_file=golden_labels_file)
-        
-
+    
+    skip_verification = True
     # Find best configuration for retrieval per method, and use that to run the verification experiments for each method
     mode = 'retrieval'
     score_by = 'MAP'
@@ -141,6 +141,8 @@ if __name__ == '__main__':
         _, best_retrieval_config = configs[0] # get the best config for the retrieval method
         logger_experiment.info(f'Best config for {mode} with {retriever}: {best_retrieval_config}')
 
+        if skip_verification:
+            continue
         # set the trec filepath we will be using for the verification
         trec_filepath = f'{best_retrieval_config["out_dir"]}/{best_retrieval_config["retriever_label"]}-{best_retrieval_config["split"]}.trec.txt'
 
